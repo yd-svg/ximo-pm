@@ -291,13 +291,12 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
  
     <!-- 費用管理 -->
     <div id="pg-b" class="page">
-      <div class="dc"><div class="dch"><div class="pdot" style="background:var(--c1)"></div><h3>115高雄山茶</h3></div><div class="bo"><div class="bi"><div class="lb">合約金額</div><div class="vl">NT$5,470,000</div></div><div class="bi"><div class="lb">合約未稅</div><div class="vl">NT$5,209,524</div></div><div class="bi"><div class="lb">可用成本</div><div class="vl">NT$2,604,762</div></div><div class="bi"><div class="lb">已支出合計</div><div class="vl" style="color:#c0392b">NT$260,000</div></div><div class="bi"><div class="lb">剩餘預算</div><div class="vl" style="color:var(--c1)">NT$2,344,762</div></div></div><div class="bbw"><div style="font-size:10px;color:var(--t3)">預算使用率 10%</div><div class="bbt"><div class="bbf" style="width:10%;background:var(--c1)"></div></div></div><div class="wir"><div class="wn">山茶評鑒</div><div class="wns"><div><div class="wl">可用</div><div class="wv">NT$120,000</div></div><div><div class="wl">已支出</div><div class="wv" style="color:#c0392b">NT$70,000</div></div><div><div class="wl">剩餘</div><div class="wv" style="color:var(--c1)">NT$50,000</div></div></div></div><div class="wir"><div class="wn">成果展</div><div class="wns"><div><div class="wl">可用</div><div class="wv">NT$80,000</div></div><div><div class="wl">已支出</div><div class="wv" style="color:#c0392b">NT$30,000</div></div><div><div class="wl">剩餘</div><div class="wv" style="color:var(--c1)">NT$50,000</div></div></div></div></div>
-      <div class="dc"><div class="dch"><div class="pdot" style="background:var(--c2)"></div><h3>116台中農場</h3></div><div class="bo"><div class="bi"><div class="lb">合約金額</div><div class="vl">NT$2,680,000</div></div><div class="bi"><div class="lb">合約未稅</div><div class="vl">NT$2,552,381</div></div><div class="bi"><div class="lb">可用成本</div><div class="vl">NT$1,276,190</div></div><div class="bi"><div class="lb">已支出合計</div><div class="vl" style="color:#c0392b">NT$20,000</div></div><div class="bi"><div class="lb">剩餘預算</div><div class="vl" style="color:var(--c2)">NT$1,256,190</div></div></div><div class="bbw"><div style="font-size:10px;color:var(--t3)">預算使用率 2%</div><div class="bbt"><div class="bbf" style="width:2%;background:var(--c2)"></div></div></div></div>
+      <div id="budget-area"><div style="padding:20px;color:var(--t3);font-size:12px;text-align:center">載入中...</div></div>
     </div>
  
     <!-- 支出明細 -->
     <div id="pg-e" class="page">
-      <div class="dc"><div class="dch"><div class="pdot" style="background:var(--c1)"></div><h3>115高雄山茶</h3><button class="bsm" style="margin-left:auto" onclick="op('pp-exp')">＋ 新增支出明細</button></div><div style="overflow-x:auto"><table class="dt"><thead><tr><th>支出細項</th><th>負責人</th><th>所屬工作項目</th><th>預估花費</th><th>日期</th><th>實際金額</th><th>未稅金額</th><th>狀態</th><th>備註</th></tr></thead><tbody><tr class="gr"><td colspan="9">Lynn · 2筆</td></tr><tr><td>茶葉5斤</td><td><span class="av avl">L</span> Lynn</td><td>拜訪南投茶園</td><td>NT$75,000</td><td>2026/07/18</td><td style="font-weight:600">NT$70,000</td><td>NT$66,667</td><td><span class="st std">已核銷</span></td><td>—</td></tr><tr><td>購買禮盒</td><td><span class="av avl">L</span> Lynn</td><td>台北農場主拜訪</td><td>NT$35,000</td><td>2026/06/20</td><td style="font-weight:600">NT$30,000</td><td>NT$28,571</td><td><span class="st stp">待核銷</span></td><td>—</td></tr><tr class="gr"><td colspan="9">Yann · 2筆</td></tr><tr><td>場地設備</td><td><span class="av avy">Y</span> Yann</td><td>山茶評鑒</td><td>NT$35,000</td><td>2026/06/20</td><td style="font-weight:600">NT$30,000</td><td>NT$28,571</td><td><span class="st std">已核銷</span></td><td>—</td></tr><tr><td>購買獎杯</td><td><span class="av avy">Y</span> Yann</td><td>成果展頒獎</td><td>NT$25,000</td><td>2026/07/17</td><td style="font-weight:600">NT$20,000</td><td>NT$19,048</td><td><span class="st stp">待核銷</span></td><td>—</td></tr></tbody></table></div></div>
+      <div id="expense-area"><div style="padding:20px;color:var(--t3);font-size:12px;text-align:center">載入中...</div></div>
     </div>
  
     <!-- 付款金費單 -->
@@ -310,10 +309,12 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
             <div class="fg"><label>支付對象</label><input type="text" id="p-payee" placeholder="OOO"></div>
             <div class="fg"><label>廠商名稱</label><input type="text" id="p-vendor" placeholder="OOOO"></div>
             <div class="fg"><label>支付性質</label><div class="ntags">
-              <span class="ntag on" onclick="this.classList.toggle('on')">貨款</span>
-              <span class="ntag on2" onclick="this.classList.toggle('on2')">工程款</span>
-              <span class="ntag" onclick="this.classList.toggle('on')">服務費</span>
-              <span class="ntag" onclick="this.classList.toggle('on')">其他</span>
+              <span class="ntag" onclick="togNtag(this)">貨款</span>
+              <span class="ntag" onclick="togNtag(this)">工程款</span>
+              <span class="ntag" onclick="togNtag(this)">薪工資</span>
+              <span class="ntag" onclick="togNtag(this)">交際</span>
+              <span class="ntag" onclick="togNtag(this)">公用事業費用</span>
+              <span class="ntag" onclick="togNtag(this)">稅捐</span>
             </div></div>
           </div>
           <div>
@@ -605,27 +606,144 @@ function fmt(ts) {
   return (d.getMonth()+1) + '/' + d.getDate();
 }
  
+var expensesData = [];
+ 
 function loadData() {
-  // 顯示載入中
   document.getElementById('pl-projects').innerHTML = '<div style="padding:12px;color:var(--t3);font-size:11px">載入中...</div>';
   document.getElementById('task-list-body').innerHTML = '<div style="padding:12px;color:var(--t3);font-size:11px">載入中...</div>';
  
-  // 同時讀取標案、工作項目、任務
   Promise.all([
     fetch(API + '?table=projects').then(function(r){return r.json();}),
     fetch(API + '?table=workitems').then(function(r){return r.json();}),
-    fetch(API + '?table=tasks').then(function(r){return r.json();})
+    fetch(API + '?table=tasks').then(function(r){return r.json();}),
+    fetch(API + '?table=expenses').then(function(r){return r.json();})
   ]).then(function(results) {
     projectsData = results[0].records || [];
     workitemsData = results[1].records || [];
     tasksData = results[2].records || [];
+    expensesData = results[3].records || [];
     renderProjects();
     renderTasks();
     renderGanttFromData();
+    renderBudget();
+    renderExpenses();
   }).catch(function(err) {
     console.error('載入失敗', err);
     document.getElementById('pl-projects').innerHTML = '<div style="padding:12px;color:#c0392b;font-size:11px">載入失敗，請重試</div>';
   });
+}
+ 
+function ntf(n) { return 'NT$' + Math.round(n).toLocaleString(); }
+function fmtDate(ts) {
+  if (!ts) return '—';
+  var d = new Date(ts);
+  return d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0');
+}
+function togNtag(el) { el.classList.toggle('on'); }
+ 
+// ── 費用管理 ──
+function renderBudget() {
+  var area = document.getElementById('budget-area');
+  if (!area) return;
+  var html = '';
+  projectsData.forEach(function(rec, i) {
+    var f = rec.fields;
+    var name = f['標案名稱'] || '未命名';
+    var color = PROJECT_COLORS[i % PROJECT_COLORS.length];
+    var contract = parseFloat(f['合約金額']) || 0;
+    var untax = f['合約未稅金額(X)'] || 0;
+    var avail = f['可用成本(X)'] || 0;
+    var spent = f['已支出合計(X)'] || 0;
+    var remain = f['剩餘預算(Ｘ)'] || f['剩餘預算(X)'] || (avail - spent);
+    var pct = avail > 0 ? Math.min(100, Math.round(spent/avail*100)) : 0;
+    var wiIds = f['工作項目(Ｘ)'] && f['工作項目(Ｘ)'].record_ids ? f['工作項目(Ｘ)'].record_ids : [];
+    var wiRows = '';
+    wiIds.forEach(function(wiId) {
+      var wi = workitemsData.find(function(w){ return w.record_id === wiId; });
+      if (!wi) return;
+      var wf = wi.fields;
+      var wName = wf['工作項目名稱'] || '';
+      var wAvail = parseFloat(wf['可用成本']) || 0;
+      var wSpent = wf['實際花費(X)'] || 0;
+      var wRemain = wf['剩餘預算(X)'] || (wAvail - wSpent);
+      wiRows += '<div class="wir"><div class="wn">'+wName+'</div><div class="wns">'
+        +'<div><div class="wl">可用</div><div class="wv">'+ntf(wAvail)+'</div></div>'
+        +'<div><div class="wl">已支出</div><div class="wv" style="color:#c0392b">'+ntf(wSpent)+'</div></div>'
+        +'<div><div class="wl">剩餘</div><div class="wv" style="color:'+color+'">'+ntf(wRemain)+'</div></div>'
+        +'</div></div>';
+    });
+    html += '<div class="dc"><div class="dch"><div class="pdot" style="background:'+color+'"></div><h3>'+name+'</h3></div>'
+      +'<div class="bo">'
+      +'<div class="bi"><div class="lb">合約金額</div><div class="vl">'+ntf(contract)+'</div></div>'
+      +'<div class="bi"><div class="lb">合約未稅</div><div class="vl">'+ntf(untax)+'</div></div>'
+      +'<div class="bi"><div class="lb">可用成本</div><div class="vl">'+ntf(avail)+'</div></div>'
+      +'<div class="bi"><div class="lb">已支出合計</div><div class="vl" style="color:#c0392b">'+ntf(spent)+'</div></div>'
+      +'<div class="bi"><div class="lb">剩餘預算</div><div class="vl" style="color:'+color+'">'+ntf(remain)+'</div></div>'
+      +'</div><div class="bbw"><div style="font-size:10px;color:var(--t3)">預算使用率 '+pct+'%</div>'
+      +'<div class="bbt"><div class="bbf" style="width:'+pct+'%;background:'+color+'"></div></div></div>'
+      +wiRows+'</div>';
+  });
+  area.innerHTML = html;
+}
+ 
+// ── 支出明細 ──
+function renderExpenses() {
+  var area = document.getElementById('expense-area');
+  if (!area) return;
+  var wiMap = {};
+  workitemsData.forEach(function(wi) {
+    var f = wi.fields;
+    var projName = f['所屬標案'] && f['所屬標案'].text_arr ? f['所屬標案'].text_arr[0] : '';
+    wiMap[wi.record_id] = { name: f['工作項目名稱'] || '', project: projName };
+  });
+  var byProject = {};
+  expensesData.forEach(function(rec) {
+    var f = rec.fields;
+    var wiArr = f['所屬工作項目'];
+    var wiId = wiArr && wiArr.record_ids ? wiArr.record_ids[0] : null;
+    var wi = wiId ? wiMap[wiId] : null;
+    var projName = wi ? wi.project : '其他';
+    if (!byProject[projName]) byProject[projName] = [];
+    byProject[projName].push({
+      name: f['支出細項'] || '',
+      assignee: f['負責人'] && f['負責人'][0] ? f['負責人'][0].name : '',
+      wiName: wi ? wi.name : '',
+      date: fmtDate(f['日期']),
+      actual: parseFloat(f['實際金額']) || 0,
+      untax: f['未稅金額(X)'] || 0,
+      status: f['狀態'] || ''
+    });
+  });
+  var html = '';
+  projectsData.forEach(function(rec, i) {
+    var pname = rec.fields['標案名稱'] || '';
+    if (!byProject[pname] || byProject[pname].length === 0) return;
+    var color = PROJECT_COLORS[i % PROJECT_COLORS.length];
+    var byAssignee = {};
+    byProject[pname].forEach(function(item) {
+      if (!byAssignee[item.assignee]) byAssignee[item.assignee] = [];
+      byAssignee[item.assignee].push(item);
+    });
+    var rows = '';
+    Object.keys(byAssignee).forEach(function(aname) {
+      rows += '<tr class="gr"><td colspan="7">'+aname+' · '+byAssignee[aname].length+'筆</td></tr>';
+      byAssignee[aname].forEach(function(item) {
+        var stClass = item.status === '已合銷' ? 'std' : 'stp';
+        var stLabel = item.status === '已合銷' ? '已核銷' : '待核銷';
+        rows += '<tr><td>'+item.name+'</td><td>'+aname+'</td><td>'+item.wiName+'</td>'
+          +'<td>'+item.date+'</td>'
+          +'<td style="font-weight:600">'+ntf(item.actual)+'</td>'
+          +'<td>'+ntf(item.untax)+'</td>'
+          +'<td><span class="st '+stClass+'">'+stLabel+'</span></td></tr>';
+      });
+    });
+    html += '<div class="dc"><div class="dch"><div class="pdot" style="background:'+color+'"></div><h3>'+pname+'</h3>'
+      +'<button class="bsm" style="margin-left:auto" onclick="op(\'pp-exp\')">＋ 新增支出明細</button></div>'
+      +'<div style="overflow-x:auto"><table class="dt"><thead><tr>'
+      +'<th>支出細項</th><th>負責人</th><th>所屬工作項目</th><th>日期</th><th>實際金額</th><th>未稅金額</th><th>狀態</th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  });
+  area.innerHTML = html || '<div style="padding:20px;color:var(--t3)">尚無支出明細</div>';
 }
  
 // ── 渲染 A 區標案列表 ──
@@ -851,7 +969,10 @@ function renderGanttFromData() {
       rows.push({ n: wiName, m: metaStr, w: (parseFloat(weight)*100||0)+'%/'+wiProg+'%', bars: bars });
     });
  
-    if (rows.length === 0) return; // 沒有工作項目就不顯示
+    if (rows.length === 0) {
+      console.log('No rows for', name, 'wiIds:', wiIds.length, 'wiMap keys:', Object.keys(wiMap).length);
+      return;
+    }
  
     var cardId = 'proj-' + i;
     var card = document.createElement('div');
@@ -876,11 +997,3 @@ loadData();
 </body>
 </html>
  
-
-
-
-
-
-
-
-
