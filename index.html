@@ -663,7 +663,7 @@ function renderBudget() {
     var spent = f['已支出合計'] || 0;
     var remain = f['剩餘預算'] || f['剩餘預算(X)'] || (avail - spent);
     var pct = avail > 0 ? Math.min(100, Math.round(spent/avail*100)) : 0;
-    var wiIds = f['工作項目'] && f['工作項目'].record_ids ? f['工作項目'].record_ids : [];
+    var wiIds = f['工作項目'] && f['工作項目'][0] && f['工作項目'][0].record_ids ? f['工作項目'][0].record_ids : [];
     var wiRows = '';
     wiIds.forEach(function(wiId) {
       var wi = workitemsData.find(function(w){ return w.record_id === wiId; });
@@ -760,7 +760,7 @@ function renderProjects() {
     var f = rec.fields;
     var name = f['標案名稱'] || '未命名';
     var color = PROJECT_COLORS[i % PROJECT_COLORS.length];
-    var workitems = f['工作項目'] ? (f['工作項目'].text_arr || []) : [];
+    var workitems = f['工作項目'] && f['工作項目'][0] ? (f['工作項目'][0].text_arr || []) : [];
     var subHTML = '';
     workitems.forEach(function(wi) {
       subHTML += '<div class="si"><span>' + wi + '</span></div>';
@@ -930,8 +930,8 @@ function renderGanttFromData() {
     var name = f['標案名稱'] || '未命名';
     var color = PROJECT_COLORS[i % PROJECT_COLORS.length];
     var progress = Math.round((f['標案完成%'] || 0) * 100);
-    var wiIds = f['工作項目'] && f['工作項目'].record_ids ? f['工作項目'].record_ids : [];
-    var wiNames = f['工作項目'] && f['工作項目'].text_arr ? f['工作項目'].text_arr : [];
+    var wiIds = f['工作項目'] && f['工作項目'][0] && f['工作項目'][0].record_ids ? f['工作項目'][0].record_ids : [];
+    var wiNames = f['工作項目'] && f['工作項目'][0] && f['工作項目'][0].text_arr ? f['工作項目'][0].text_arr : [];
 
     var rows = [];
     wiIds.forEach(function(wiId, idx) {
