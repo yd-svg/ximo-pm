@@ -1,65 +1,103 @@
-/**
- * api/lark.js — Vercel Serverless Function
- * 作為前端與 Lark API 之間的 Proxy，解決 CORS 問題
- *
- * 環境變數（在 Vercel Dashboard > Settings > Environment Variables 設定）：
- *   LARK_PAT  →  你的 Personal Access Token (u-xxxxxxxx)
- *
- * 使用方式：
- *   GET  /api/lark?path=/bitable/v1/apps/.../tables/.../records
- *   PATCH /api/lark?path=/bitable/v1/apps/.../tables/.../records/:id
- *        body: { fields: { ... } }
- */
+const APP_ID = process.env.LARK_APP_ID;
+const APP_SECRET = process.env.LARK_APP_SECRET;
+const APP_TOKEN = process.env.LARK_APP_TOKEN;
+const BASE_URL = 'https://open.larksuite.com/open-apis';
  
-const LARK_BASE = 'https://open.larksuite.com/open-apis';
+// 取得 tenant_access_token
+async function getToken() {
+  const res = await fetch(BASE_URL + '/auth/v3/tenant_access_token/internal', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ app_id: APP_ID, app_secret: APP_SECRET })
+  });
+  const data = await res.json();
+  if (data.code !== 0) throw new Error('Token error: ' + data.msg);
+  return data.tenant_access_token;
+}
+ 
+// 讀取表格資料
+async function getRecords(token, tableId) {
+  const url = BASE_URL + '/bitable/v1/apps/' + APP_TOKEN + '/tables/' + tableId + '/records?page_size=100';
+  const res = await fetch(url, {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  const data = await res.json();
+  if (data.code !== 0) throw new Error('Records error: ' + data.msg + ' code:' + data.code);
+  return data.data ? data.data.items || [] : [];
+}
+ 
+// 新增記錄
+async function createRecord(token, tableId, fields) {
+  const url = BASE_URL + '/bitable/v1/apps/' + APP_TOKEN + '/tables/' + tableId + '/records';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ fields: fields })
+  });
+  return await res.json();
+}
+ 
+// 更新記錄
+async function updateRecord(token, tableId, recordId, fields) {
+  const url = BASE_URL + '/bitable/v1/apps/' + APP_TOKEN + '/tables/' + tableId + '/records/' + recordId;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ fields: fields })
+  });
+  return await res.json();
+}
+ 
+const TABLES = {
+  projects:  'tbl8ldUZKRcteYFu',
+  workitems: 'tblc5QbFf04I3DFl',
+  tasks:     'tbl7mC8KaVVXQOVG',
+  expenses:  'tblsUdkQN56T6Jnk',
+  payments:  'tblv9SmBvbhxNftU',
+  designs:   'tblc3a8IofsGlbKu',
+  journal:   'tblVs9L5WAJcE2a3',
+  members:   'tblIHdb6u6S2xdJH'
+};
  
 export default async function handler(req, res) {
-  // ── CORS headers ──
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
- 
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
  
-  // ── Get PAT ──
-  // 優先使用環境變數；開發時也可從 Header 傳入（x-lark-pat）
-  const pat = process.env.LARK_PAT || req.headers['x-lark-pat'];
-  if (!pat) {
-    return res.status(401).json({ error: '未設定 LARK_PAT 環境變數或 x-lark-pat Header' });
-  }
+  const { table, recordId } = req.query;
  
-  // ── Build Lark URL ──
-  const larkPath = req.query.path;
-  if (!larkPath) {
-    return res.status(400).json({ error: '缺少 ?path= 參數' });
-  }
- 
-  // 把其他 query params 轉成 Lark API 的 query string（除了 path 本身）
-  const forwardParams = { ...req.query };
-  delete forwardParams.path;
-  const qs = new URLSearchParams(forwardParams).toString();
-  const url = `${LARK_BASE}${larkPath}${qs ? '?' + qs : ''}`;
- 
-  // ── Forward request ──
   try {
-    const options = {
-      method: req.method,
-      headers: {
-        'Authorization': `Bearer ${pat}`,
-        'Content-Type': 'application/json',
-      },
-    };
+    const token = await getToken();
  
-    if (['PATCH', 'POST', 'PUT'].includes(req.method) && req.body) {
-      options.body = JSON.stringify(req.body);
+    if (req.method === 'GET') {
+      if (!TABLES[table]) return res.status(400).json({ error: 'Invalid table: ' + table });
+      const records = await getRecords(token, TABLES[table]);
+      return res.status(200).json({ records: records });
     }
  
-    const larkRes = await fetch(url, options);
-    const data = await larkRes.json();
+    if (req.method === 'POST') {
+      if (!TABLES[table]) return res.status(400).json({ error: 'Invalid table' });
+      const result = await createRecord(token, TABLES[table], req.body);
+      return res.status(200).json(result);
+    }
  
-    return res.status(larkRes.status).json(data);
+    if (req.method === 'PUT') {
+      if (!TABLES[table] || !recordId) return res.status(400).json({ error: 'Invalid params' });
+      const result = await updateRecord(token, TABLES[table], recordId, req.body);
+      return res.status(200).json(result);
+    }
+ 
+    return res.status(405).json({ error: 'Method not allowed' });
+ 
   } catch (err) {
-    console.error('[lark proxy error]', err);
+    console.error(err);
     return res.status(500).json({ error: err.message });
   }
 }
