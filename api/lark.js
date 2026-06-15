@@ -1,7 +1,7 @@
 const APP_ID = process.env.LARK_APP_ID;
 const APP_SECRET = process.env.LARK_APP_SECRET;
 const APP_TOKEN = process.env.LARK_APP_TOKEN;
-const BASE_URL = 'https://open.larksuite.com/open-apis';
+const BASE_URL = process.env.LARK_BASE_URL || 'https://open.larksuite.com/open-apis';
  
 // 取得 tenant_access_token
 async function getToken() {

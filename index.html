@@ -697,39 +697,71 @@ function fmt(ts) {
   return (d.getMonth()+1) + '/' + d.getDate();
 }
 
+function getWiIds(f) {
+  var wi = f['工作項目'];
+  if (!wi) return [];
+  if (wi.record_ids) return wi.record_ids;
+  if (wi[0] && wi[0].record_ids) return wi[0].record_ids;
+  return [];
+}
+
+function loadExtraData() {
+  Promise.all([
+    fetch(API + '?table=designs').then(function(r){return r.json();}).catch(function(){return {};}),
+    fetch(API + '?table=journal').then(function(r){return r.json();}).catch(function(){return {};}),
+    fetch(API + '?table=members').then(function(r){return r.json();}).catch(function(){return {};})
+  ]).then(function(results) {
+    designsData = results[0].records || [];
+    journalData = results[1].records || [];
+    membersData = results[2].records || [];
+    renderDesigns();
+    renderJournal();
+    buildMembersMap();
+    fillMemberSelects();
+  });
+}
+
 function loadData() {
   document.getElementById('pl-projects').innerHTML = '<div style="padding:12px;color:var(--t3);font-size:11px">載入中...</div>';
   document.getElementById('task-list-body').innerHTML = '<div style="padding:12px;color:var(--t3);font-size:11px">載入中...</div>';
   document.getElementById('journal-list').innerHTML = '<div style="padding:12px;color:var(--t3);font-size:11px">載入中...</div>';
 
+  // 核心 4 張表：與舊版相同，確保主要畫面先顯示
   Promise.all([
     fetch(API + '?table=projects').then(function(r){return r.json();}),
     fetch(API + '?table=workitems').then(function(r){return r.json();}),
     fetch(API + '?table=tasks').then(function(r){return r.json();}),
-    fetch(API + '?table=expenses').then(function(r){return r.json();}),
-    fetch(API + '?table=designs').then(function(r){return r.json();}),
-    fetch(API + '?table=journal').then(function(r){return r.json();}),
-    fetch(API + '?table=members').then(function(r){return r.json();}).catch(function(){return {records:[]};})
+    fetch(API + '?table=expenses').then(function(r){return r.json();})
   ]).then(function(results) {
     projectsData = results[0].records || [];
     workitemsData = results[1].records || [];
     tasksData = results[2].records || [];
     expensesData = results[3].records || [];
-    designsData = results[4].records || [];
-    journalData = results[5].records || [];
-    membersData = results[6].records || [];
     renderProjects();
     renderTasks();
     renderGanttFromData();
     renderBudget();
     renderExpenses();
-    renderDesigns();
-    renderJournal();
-    fillMemberSelects();
-    buildMembersMap();
+    loadExtraData();
   }).catch(function(err) {
     console.error('載入失敗', err);
-    document.getElementById('pl-projects').innerHTML = '<div style="padding:12px;color:#c0392b;font-size:11px">載入失敗，請重試</div>';
+    showLoadError('請稍後再試');
+  });
+}
+
+function showLoadError(msg) {
+  var html = '<div style="padding:12px;color:#c0392b;font-size:11px;line-height:1.6">'
+    + '<div style="font-weight:600;margin-bottom:4px">無法讀取飛書資料</div>'
+    + '<div style="color:var(--t2);font-size:10px">' + msg + '</div>'
+    + '<div style="color:var(--t3);font-size:10px;margin-top:6px">請到 Vercel 設定 Lark 金鑰（APP_ID、APP_SECRET、APP_TOKEN）</div>'
+    + '</div>';
+  document.getElementById('pl-projects').innerHTML = html;
+  document.getElementById('task-list-body').innerHTML = html;
+  document.getElementById('journal-list').innerHTML = html;
+  var areas = ['gantt-area','budget-area','expense-area','design-area'];
+  areas.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = html;
   });
 }
 
@@ -760,8 +792,7 @@ function renderBudget() {
     var spent = f['已支出合計'] || 0;
     var remain = f['剩餘預算'] || f['剩餘預算(X)'] || (avail - spent);
     var pct = avail > 0 ? Math.min(100, Math.round(spent/avail*100)) : 0;
-    var wiIds = f['工作項目'] && f['工作項目'].record_ids ? f['工作項目'].record_ids
-      : (f['工作項目'] && f['工作項目'][0] && f['工作項目'][0].record_ids ? f['工作項目'][0].record_ids : []);
+    var wiIds = getWiIds(f);
     var wiRows = '';
     wiIds.forEach(function(wiId) {
       var wi = workitemsData.find(function(w){ return w.record_id === wiId; });
@@ -867,8 +898,7 @@ function renderProjects() {
     else if (startTs) contractStr = fmtDate(startTs) + ' –';
     else if (endTs) contractStr = '– ' + fmtDate(endTs);
     var meta = [pmName, contractStr].filter(Boolean).join(' · ');
-    var wiIds = f['工作項目'] && f['工作項目'].record_ids ? f['工作項目'].record_ids
-      : (f['工作項目'] && f['工作項目'][0] && f['工作項目'][0].record_ids ? f['工作項目'][0].record_ids : []);
+    var wiIds = getWiIds(f);
     var subHTML = '';
     wiIds.forEach(function(wiId) {
       var wi = workitemsData.find(function(w){ return w.record_id === wiId; });
@@ -1039,8 +1069,7 @@ function renderGanttFromData() {
     var name = f['標案名稱'] || '未命名';
     var color = PROJECT_COLORS[i % PROJECT_COLORS.length];
     var progress = Math.round((f['標案完成%'] || 0) * 100);
-    var wiIds = f['工作項目'] && f['工作項目'].record_ids ? f['工作項目'].record_ids
-      : (f['工作項目'] && f['工作項目'][0] && f['工作項目'][0].record_ids ? f['工作項目'][0].record_ids : []);
+    var wiIds = getWiIds(f);
     var wiNames = f['工作項目'] && f['工作項目'][0] && f['工作項目'][0].text_arr ? f['工作項目'][0].text_arr : [];
 
     var rows = [];
