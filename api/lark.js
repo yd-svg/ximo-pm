@@ -59,6 +59,16 @@ async function updateRecord(token, tableId, recordId, fields) {
   return await res.json();
 }
  
+// 刪除記錄
+async function deleteRecord(token, tableId, recordId) {
+  const url = BASE_URL + '/bitable/v1/apps/' + APP_TOKEN + '/tables/' + tableId + '/records/' + recordId;
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  return await res.json();
+}
+
 const TABLES = {
   projects:  'tbl8ldUZKRcteYFu',
   workitems: 'tblc5QbFf04I3DFl',
@@ -83,7 +93,7 @@ async function sendWebhook(text) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -157,6 +167,12 @@ export default async function handler(req, res) {
     if (req.method === 'PUT') {
       if (!TABLES[table] || !recordId) return res.status(400).json({ error: 'Invalid params' });
       const result = await updateRecord(token, TABLES[table], recordId, req.body);
+      return res.status(200).json(result);
+    }
+
+    if (req.method === 'DELETE') {
+      if (!TABLES[table] || !recordId) return res.status(400).json({ error: 'Invalid params' });
+      const result = await deleteRecord(token, TABLES[table], recordId);
       return res.status(200).json(result);
     }
 
