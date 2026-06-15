@@ -124,19 +124,19 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .jpage-toolbar{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .jpage-toolbar h3{font-size:14px;font-weight:700;flex:1}
 .jpage-feed{flex:1;overflow-y:auto;padding:10px 14px}
-.jt-group{padding:8px 2px 6px;font-size:12px;font-weight:700;color:var(--text);border-bottom:2px solid var(--border);margin:14px 0 8px;display:flex;align-items:center;gap:8px}
-.jt-group:first-child{margin-top:0}
-.jt-wrap{overflow-x:auto;margin-bottom:8px}
-.jt{width:100%;border-collapse:collapse;font-size:11px}
-.jt th{padding:6px 8px;text-align:left;font-size:10px;font-weight:600;color:var(--t3);border-bottom:1px solid var(--border);background:var(--sf2);white-space:nowrap}
-.jt td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--t2);line-height:1.45}
-.jt tr:hover td{background:#faf9f7}
-.jt-tag{display:inline-block;padding:1px 6px;border-radius:6px;background:var(--sf2);font-size:10px;margin:0 3px 2px 0;white-space:nowrap}
-.jt-proj{display:inline-block;padding:1px 7px;border-radius:8px;color:#fff;font-size:9px;font-weight:600}
-.jt-person{display:flex;align-items:center;gap:5px;font-weight:600;color:var(--text);white-space:nowrap}
-.jt-block{color:var(--danger);font-weight:600}
-.jt-reason{color:var(--danger);font-size:10px}
-.jt-empty{color:var(--t3)}
+.jfeed-group{margin-bottom:20px}
+.jfeed-hdr{font-size:13px;font-weight:700;color:var(--text);padding:4px 0 8px;border-bottom:1px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.jfeed-entry{padding:8px 2px 10px;border-bottom:1px solid var(--border);margin-bottom:0}
+.jfeed-entry:last-child{border-bottom:none}
+.jfeed-entry.has-block .jfeed-line.block{font-weight:600}
+.jfeed-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.jfeed-date{font-size:10px;color:var(--t3);margin-left:auto}
+.jfeed-lines{display:flex;flex-direction:column;gap:2px;padding-left:2px}
+.jfeed-line{font-size:11px;color:var(--t2);line-height:1.55}
+.jfeed-line b{font-weight:600;color:var(--text);display:inline-block;min-width:44px;font-size:10px}
+.jfeed-line.block{color:var(--danger)}
+.jfeed-line.block b{color:var(--danger)}
+.jfeed-reason{margin-top:4px;padding:4px 0 0 8px;border-left:2px solid #e8a0a0;font-size:10px;color:var(--danger);line-height:1.5}
 .dn{display:flex;align-items:center;gap:4px}
 .dn button{border:none;background:none;cursor:pointer;color:var(--t2);padding:2px 4px;border-radius:4px;font-size:12px}
 .dn button:hover{background:var(--sf2)}
@@ -212,7 +212,9 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 /* Gantt */
 .gc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
 .gtb{padding:8px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
-.gtb h3{font-size:13px;font-weight:600;flex:1}
+.gtb h3{font-size:13px;font-weight:600;flex:0 1 auto}
+.g-contract{font-size:11px;color:var(--t3);font-weight:500;white-space:nowrap}
+.gtb .pb{margin-left:auto}
 .gb{display:flex;overflow:hidden;border-bottom:1px solid var(--border)}
 .gf{width:190px;flex-shrink:0;border-right:2px solid var(--border);background:var(--surface)}
 .gfh{height:52px;background:var(--sf2);border-bottom:1px solid var(--border);display:flex;align-items:flex-end;padding:0 10px 6px}
@@ -505,8 +507,8 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 <!-- ══ 右側：團隊任務 ══ -->
 <div id="rp">
   <div class="eh">
-    <h3>團隊任務</h3>
-    <span class="eh-sub">每位同仁目前的任務進度</span>
+    <h3>今日任務</h3>
+    <span class="eh-sub">只顯示今天到期 · 其他日期請至墨日誌</span>
   </div>
   <div class="rp-filters" id="team-filters"></div>
   <div class="tl2" id="team-task-list">
@@ -1665,22 +1667,25 @@ function paintGantt(key,proj,vs,ve,total,cw){
   // fixed left
   var fixH='<div class="gfh"><span>工作項目</span></div>';
   proj.rows.forEach(function(row){
-    fixH+='<div class="grl"><div class="grn">'+row.n+'</div><div class="grm">'+row.m+'</div></div>';
+    var rowH = Math.max(40, row.bars.length * 20 + 12);
+    fixH+='<div class="grl" style="height:'+rowH+'px"><div class="grn">'+row.n+'</div><div class="grm">'+row.m+'</div></div>';
   });
 
   // timeline
   var tmH='<div class="gmr" style="width:'+tw+'px;position:relative">'+mHTML+tlHdr+'</div>';
   tmH+='<div class="gdr" style="width:'+tw+'px;position:relative">'+dHTML+'</div>';
   proj.rows.forEach(function(row){
+    var rowH = Math.max(40, row.bars.length * 20 + 12);
     var bH=tlHTML;
-    row.bars.forEach(function(bar){
+    row.bars.forEach(function(bar, bi){
       var bs=new Date(bar.s),be=new Date(bar.e);
       var bx=dif(vs,bs)*CW,bw=(dif(bs,be)+1)*CW-2;
       if(bx+bw<0||bx>tw)return;
       var ax=Math.max(0,bx),aw=Math.min(bw,tw-ax);
-      bH+='<div class="gbar" style="left:'+ax+'px;width:'+aw+'px;background:'+proj.color+';opacity:'+bar.o+'">'+bar.l+'</div>';
+      var top = 4 + bi * 20;
+      bH+='<div class="gbar" style="left:'+ax+'px;width:'+aw+'px;top:'+top+'px;transform:none;height:16px;background:'+proj.color+';opacity:'+bar.o+'">'+bar.l+'</div>';
     });
-    tmH+='<div class="gtr" style="width:'+tw+'px">'+bH+'</div>';
+    tmH+='<div class="gtr" style="width:'+tw+'px;height:'+rowH+'px">'+bH+'</div>';
   });
 
   var gb=document.getElementById('gb-'+key);
@@ -2100,14 +2105,8 @@ function renderProjects() {
     var name = f['標案名稱'] || '未命名';
     var color = PROJECT_COLORS[i % PROJECT_COLORS.length];
     var pmName = personName(f['主PM']);
-    var startTs = f['合約開始日'];
-    var endTs = f['合約結束日'];
     var progress = Math.round((f['標案完成%'] || 0) * 100);
-    var contractStr = '';
-    if (startTs && endTs) contractStr = fmtDate(startTs) + ' – ' + fmtDate(endTs);
-    else if (startTs) contractStr = fmtDate(startTs) + ' –';
-    else if (endTs) contractStr = '– ' + fmtDate(endTs);
-    var meta = [pmName, contractStr].filter(Boolean).join(' · ');
+    var meta = pmName || '';
     var workitems = getWorkitemsForProject(rec);
     var subHTML = '';
     workitems.forEach(function(wi) {
@@ -2214,8 +2213,16 @@ function renderTasks() {
   renderTeamPanel();
 }
 
-// ── 右側：依同仁顯示任務 ──
+// ── 右側：今日任務 ──
 var teamFilterPerson = '';
+
+function isTodayTeamTask(dueTs, progress) {
+  if (progress >= 100) return false;
+  if (!dueTs) return false;
+  var due = new Date(dueTs);
+  due.setHours(0, 0, 0, 0);
+  return due.getTime() <= TODAY.getTime();
+}
 
 function renderTeamPanel() {
   var area = document.getElementById('team-task-list');
@@ -2242,7 +2249,7 @@ function renderTeamPanel() {
     var wi = wiIds[0] ? wiMap[wiIds[0]] : null;
     var projName = wi ? (wi.project || '其他') : '其他';
     var progress = parseProgressVal(f['進度狀態'], f['進度數值']);
-    if (progress >= 100) return;
+    if (!isTodayTeamTask(f['預計完成日'], progress)) return;
     if (!byPerson[assignee]) byPerson[assignee] = [];
     byPerson[assignee].push({
       id: rec.record_id,
@@ -2261,7 +2268,7 @@ function renderTeamPanel() {
   updateTeamFilters(persons);
 
   if (!persons.length) {
-    area.innerHTML = '<div style="padding:12px;color:var(--t3);font-size:11px">尚無進行中任務</div>';
+    area.innerHTML = '<div style="padding:12px;color:var(--t3);font-size:11px;line-height:1.6">今日無待辦任務<br><span style="font-size:10px">歷史與其他日期請至頂部「墨日誌」</span></div>';
     return;
   }
 
@@ -2391,25 +2398,7 @@ function renderGanttFromData() {
       else if (wiEnd) metaStr = fmt(wiEnd.getTime());
 
       var relTasks = tasksByWi[wiId] || [];
-      if (!relTasks.length && wiEnd) {
-        var barStart = wiStart || new Date(wiEnd.getTime() - 7 * 86400000);
-        rows.push({
-          n: wiName,
-          m: metaStr,
-          bars: [{ s: toDateStr(barStart), e: toDateStr(wiEnd), l: wiName, o: 0.6 }]
-        });
-        return;
-      }
-      if (!relTasks.length && wiStart) {
-        var barEnd = wiEnd || new Date(wiStart.getTime() + 7 * 86400000);
-        rows.push({
-          n: wiName,
-          m: metaStr,
-          bars: [{ s: toDateStr(wiStart), e: toDateStr(barEnd), l: wiName, o: 0.6 }]
-        });
-        return;
-      }
-
+      var bars = [];
       relTasks.forEach(function(t) {
         var tf = t.fields;
         var tName = tf['任務名稱'] || '未命名';
@@ -2418,27 +2407,47 @@ function renderGanttFromData() {
         var tStart = new Date(tDue.getTime() - 3 * 86400000);
         if (wiStart && tStart < wiStart) tStart = wiStart;
         var tProg = parseProgressVal(tf['進度狀態'], tf['進度數值']);
-        rows.push({
-          n: tName,
-          m: wiName + (metaStr ? ' · ' + metaStr : ''),
-          bars: [{
-            s: toDateStr(tStart),
-            e: toDateStr(tDue),
-            l: tName,
-            o: tProg >= 100 ? 1 : (tProg > 0 ? 0.9 : 0.55)
-          }]
+        bars.push({
+          s: toDateStr(tStart),
+          e: toDateStr(tDue),
+          l: tName,
+          o: tProg >= 100 ? 1 : (tProg > 0 ? 0.9 : 0.55)
         });
       });
+
+      if (bars.length) {
+        rows.push({ n: wiName, m: metaStr, bars: bars });
+      } else if (wiEnd) {
+        var barStart = wiStart || new Date(wiEnd.getTime() - 7 * 86400000);
+        rows.push({
+          n: wiName,
+          m: metaStr,
+          bars: [{ s: toDateStr(barStart), e: toDateStr(wiEnd), l: wiName, o: 0.6 }]
+        });
+      } else if (wiStart) {
+        var barEnd2 = wiEnd || new Date(wiStart.getTime() + 7 * 86400000);
+        rows.push({
+          n: wiName,
+          m: metaStr,
+          bars: [{ s: toDateStr(wiStart), e: toDateStr(barEnd2), l: wiName, o: 0.6 }]
+        });
+      }
     });
 
     if (!rows.length) return;
+
+    var contractLabel = '';
+    if (contractStart && contractEnd) contractLabel = fmtDate(f['合約開始日']) + ' – ' + fmtDate(f['合約結束日']);
+    else if (contractStart) contractLabel = fmtDate(f['合約開始日']) + ' –';
+    else if (contractEnd) contractLabel = '– ' + fmtDate(f['合約結束日']);
 
     var cardId = 'proj-' + i;
     var card = document.createElement('div');
     card.className = 'gc';
     card.innerHTML = '<div class="gtb"><div class="pdot" style="background:'+color+'"></div><h3>'+name+'</h3>'
+      +(contractLabel?'<span class="g-contract">'+contractLabel+'</span>':'')
       +'<span class="pb" style="background:rgba(0,0,0,0.07);color:'+color+'">'+progress+'%</span>'
-      +'<button class="bsm" style="margin-left:auto" onclick="openPopup(\'pp-task\')">＋ 任務</button></div>'
+      +'<button class="bsm" onclick="openPopup(\'pp-task\')">＋ 任務</button></div>'
       +'<div class="gb" id="gb-'+cardId+'"></div>'
       +'<div class="gsb"><button onclick="scG(\''+cardId+'\',-200)">◀</button>'
       +'<input type="range" min="0" max="100" value="30" id="rng-'+cardId+'" oninput="scR(\''+cardId+'\',this.value)">'
@@ -3069,52 +3078,50 @@ function journalIsBlockedActive(rec) {
   return status === '卡關';
 }
 
-function journalTagsHtml(text) {
-  if (!text) return '<span class="jt-empty">—</span>';
-  return text.split('、').map(function(t) {
-    t = t.trim();
-    return t ? '<span class="jt-tag">' + escHtml(t) + '</span>' : '';
-  }).join('');
+function journalFeedLine(label, val, isBlock) {
+  if (!val) return '';
+  return '<div class="jfeed-line' + (isBlock ? ' block' : '') + '"><b>' + label + '</b>' + escHtml(val) + '</div>';
 }
 
-function renderJournalTableHead(mode) {
-  if (mode === 'block') {
-    return '<tr><th>日期</th><th>所屬專案</th><th>卡關任務</th><th>卡關原因</th><th>回報人</th></tr>';
-  }
-  if (mode === 'person') {
-    return '<tr><th>日期</th><th>所屬專案</th><th>進行中</th><th>今日完成</th><th>卡關</th><th>明日預計</th><th>備註</th></tr>';
-  }
-  return '<tr><th>回報人</th><th>所屬專案</th><th>進行中</th><th>今日完成</th><th>卡關</th><th>明日預計</th><th>備註</th></tr>';
-}
-
-function renderJournalTableRow(rec, mode) {
+function renderJournalFeedEntry(rec, opts) {
+  opts = opts || {};
   var c = collectJournalContent(rec);
   var author = journalPersonName(rec) || '—';
   var ts = journalTs(rec);
-  var dateStr = ts ? fmtDate(ts) : '—';
+  var dateStr = ts ? fmtDate(ts) : '';
   var color = c.proj ? projColorByName(c.proj.split('、')[0]) : '#888';
-  var projHtml = c.proj ? '<span class="jt-proj" style="background:' + color + '">' + escHtml(c.proj) + '</span>' : '<span class="jt-empty">—</span>';
-  var personHtml = '<span class="jt-person"><span class="av ' + avatarClass(author) + '">' + personInitial(author) + '</span>' + escHtml(author) + '</span>';
-  var note = c.note && !(c.doing || c.done || c.blocked || c.tomorrow) ? escHtml(c.note) : (c.note ? escHtml(c.note) : '');
+  var hasContent = !!(c.doing || c.done || c.blocked || c.tomorrow || c.blockReason || c.note);
+  if (!hasContent) return '';
 
-  if (mode === 'block') {
-    return '<tr><td>' + dateStr + '</td><td>' + projHtml + '</td><td class="jt-block">' + journalTagsHtml(c.blocked) + '</td>'
-      + '<td class="jt-reason">' + (c.blockReason ? escHtml(c.blockReason) : '<span class="jt-empty">—</span>') + '</td><td>' + personHtml + '</td></tr>';
+  var html = '<div class="jfeed-entry' + (c.hasBlock ? ' has-block' : '') + '">';
+  html += '<div class="jfeed-top">';
+  if (opts.showAuthor !== false) {
+    html += '<span class="av ' + avatarClass(author) + '">' + personInitial(author) + '</span>';
+    html += '<span class="jn">' + escHtml(author) + '</span>';
   }
-  if (mode === 'person') {
-    return '<tr><td>' + dateStr + '</td><td>' + projHtml + '</td><td>' + journalTagsHtml(c.doing) + '</td><td>' + journalTagsHtml(c.done) + '</td>'
-      + '<td class="jt-block">' + journalTagsHtml(c.blocked) + '</td><td>' + journalTagsHtml(c.tomorrow) + '</td><td>' + (note || '<span class="jt-empty">—</span>') + '</td></tr>';
+  if (c.proj) html += '<span class="jpt" style="background:' + color + '">' + escHtml(c.proj) + '</span>';
+  if (c.hasBlock) html += '<span class="jblk">卡關</span>';
+  if (opts.showDate && dateStr) html += '<span class="jfeed-date">' + dateStr + '</span>';
+  html += '</div><div class="jfeed-lines">';
+  html += journalFeedLine('進行中', c.doing, false);
+  html += journalFeedLine('完成', c.done, false);
+  html += journalFeedLine('卡關', c.blocked, true);
+  html += journalFeedLine('明日', c.tomorrow, false);
+  html += '</div>';
+  if (c.blockReason) html += '<div class="jfeed-reason">' + escHtml(c.blockReason) + '</div>';
+  if (c.note && !(c.doing || c.done || c.blocked || c.tomorrow)) {
+    html += '<div class="jfeed-reason" style="border-left-color:var(--border);color:var(--t2)">' + formatJournalHtml(c.note) + '</div>';
   }
-  return '<tr><td>' + personHtml + '</td><td>' + projHtml + '</td><td>' + journalTagsHtml(c.doing) + '</td><td>' + journalTagsHtml(c.done) + '</td>'
-    + '<td class="jt-block">' + journalTagsHtml(c.blocked) + '</td><td>' + journalTagsHtml(c.tomorrow) + '</td><td>' + (note || '<span class="jt-empty">—</span>') + '</td></tr>';
+  html += '</div>';
+  return html;
 }
 
-function renderJournalTable(recs, mode) {
-  if (!recs.length) return '';
-  var html = '<div class="jt-wrap"><table class="jt"><thead>' + renderJournalTableHead(mode) + '</thead><tbody>';
-  recs.forEach(function(rec) { html += renderJournalTableRow(rec, mode); });
-  html += '</tbody></table></div>';
-  return html;
+function renderJournalFeedList(recs, opts) {
+  var html = '';
+  recs.forEach(function(rec) {
+    html += renderJournalFeedEntry(rec, opts);
+  });
+  return html || '<div style="padding:8px 2px;color:var(--t3);font-size:11px">（無內容）</div>';
 }
 
 function renderJournalHtml(mode, area) {
@@ -3137,8 +3144,10 @@ function renderJournalHtml(mode, area) {
     var html = '';
     names.forEach(function(name) {
       var recs = byPerson[name].sort(function(a, b) { return (journalTs(b) || 0) - (journalTs(a) || 0); });
-      html += '<div class="jt-group"><span class="av ' + avatarClass(name) + '">' + personInitial(name) + '</span>' + escHtml(name) + '<span style="font-size:10px;color:var(--t3);font-weight:600">' + recs.length + ' 筆紀錄</span></div>';
-      html += renderJournalTable(recs, 'person');
+      html += '<div class="jfeed-group">';
+      html += '<div class="jfeed-hdr"><span class="av ' + avatarClass(name) + '">' + personInitial(name) + '</span>' + escHtml(name) + '<span style="font-size:10px;color:var(--t3);font-weight:600">' + recs.length + ' 筆</span></div>';
+      html += renderJournalFeedList(recs, { showAuthor: false, showDate: true });
+      html += '</div>';
     });
     area.innerHTML = html;
     return;
@@ -3146,7 +3155,7 @@ function renderJournalHtml(mode, area) {
 
   if (mode === 'block') {
     items.sort(function(a, b) { return (journalTs(b) || 0) - (journalTs(a) || 0); });
-    area.innerHTML = renderJournalTable(items, 'block');
+    area.innerHTML = '<div class="jfeed-group">' + renderJournalFeedList(items, { showAuthor: true, showDate: true }) + '</div>';
     return;
   }
 
@@ -3166,8 +3175,10 @@ function renderJournalHtml(mode, area) {
     var recs = byDay[dayTs].sort(function(a, b) {
       return (journalPersonName(a) || '').localeCompare(journalPersonName(b) || '', 'zh-Hant');
     });
-    html2 += '<div class="jt-group">' + (d.getFullYear()) + '/' + (d.getMonth()+1) + '/' + d.getDate() + '（' + weekdayLabel(d) + '）<span style="font-size:10px;color:var(--t3);font-weight:600">' + recs.length + ' 筆紀錄</span></div>';
-    html2 += renderJournalTable(recs, 'date');
+    html2 += '<div class="jfeed-group">';
+    html2 += '<div class="jfeed-hdr">' + (d.getFullYear()) + '/' + (d.getMonth()+1) + '/' + d.getDate() + '（' + weekdayLabel(d) + '）<span style="font-size:10px;color:var(--t3);font-weight:600">' + recs.length + ' 筆</span></div>';
+    html2 += renderJournalFeedList(recs, { showAuthor: true, showDate: false });
+    html2 += '</div>';
   });
   area.innerHTML = html2;
 }
