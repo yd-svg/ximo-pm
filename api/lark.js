@@ -5,13 +5,18 @@ const BASE_URL = process.env.LARK_BASE_URL || 'https://open.larksuite.com/open-a
  
 // 取得 tenant_access_token
 async function getToken() {
+  if (!APP_ID || !APP_SECRET) {
+    throw new Error('缺少 LARK_APP_ID 或 LARK_APP_SECRET');
+  }
   const res = await fetch(BASE_URL + '/auth/v3/tenant_access_token/internal', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ app_id: APP_ID, app_secret: APP_SECRET })
   });
   const data = await res.json();
-  if (data.code !== 0) throw new Error('Token error: ' + data.msg);
+  if (data.code !== 0) {
+    throw new Error('Token error: ' + data.msg + ' (code ' + data.code + ')');
+  }
   return data.tenant_access_token;
 }
  
@@ -85,6 +90,30 @@ export default async function handler(req, res) {
   const { table, recordId, action } = req.query;
 
   try {
+    if (action === 'ping' && req.method === 'GET') {
+      let lark = null;
+      let tokenOk = false;
+      try {
+        await getToken();
+        tokenOk = true;
+      } catch (e) {
+        lark = e.message;
+      }
+      return res.status(200).json({
+        ok: tokenOk,
+        baseUrl: BASE_URL,
+        env: {
+          hasAppId: !!APP_ID,
+          hasAppSecret: !!APP_SECRET,
+          hasAppToken: !!APP_TOKEN,
+          appIdLen: APP_ID ? APP_ID.length : 0,
+          appSecretLen: APP_SECRET ? APP_SECRET.length : 0,
+          appTokenLen: APP_TOKEN ? APP_TOKEN.length : 0
+        },
+        tokenError: lark
+      });
+    }
+
     const token = await getToken();
 
     if (action === 'notify' && req.method === 'POST') {
