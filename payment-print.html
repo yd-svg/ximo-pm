@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>元頂集團 付款申請單</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:"Microsoft JhengHei","PingFang TC",sans-serif; font-size:13px; background:#f0f0f0; }
+@media print {
+  body { background:white; }
+  .controls,.autofill-banner { display:none !important; }
+  .page { box-shadow:none; margin:0; padding:10mm 12mm; }
+}
+.controls { background:#2d5be3; color:white; padding:14px 24px; display:flex; align-items:center; gap:16px; }
+.controls h2 { font-size:15px; flex:1; }
+.btn { padding:8px 20px; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:bold; }
+.btn-print { background:white; color:#2d5be3; }
+.btn-clear { background:rgba(255,255,255,.2); color:white; border:1px solid rgba(255,255,255,.4); }
+.autofill-banner { display:none; background:#d1fae5; border-bottom:2px solid #6ee7b7; color:#065f46; padding:10px 24px; font-size:13px; font-weight:600; }
+.page { width:210mm; min-height:148mm; margin:24px auto; background:white; padding:12mm 14mm 10mm; box-shadow:0 2px 16px rgba(0,0,0,.12); }
+.company-name { font-size:14px; font-weight:bold; margin-bottom:4px; }
+.form-title { text-align:center; font-size:20px; font-weight:bold; margin-bottom:10px; letter-spacing:4px; }
+.header-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:13px; }
+input[type="text"] { border:none; border-bottom:1px solid #333; outline:none; font-size:12px; font-family:inherit; background:transparent; padding:1px 3px; }
+input[type="text"]:focus { border-bottom-color:#2d5be3; background:#f0f4ff; }
+input[type="text"].filled { background:#f0fff4; }
+table { width:100%; border-collapse:collapse; }
+td { border:1px solid #333; padding:4px 6px; vertical-align:middle; font-size:12px; }
+.lc { background:#f8f8f8; text-align:center; font-size:11px; white-space:nowrap; }
+.cg { display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center; }
+.cg label { display:flex; align-items:center; gap:2px; cursor:pointer; font-size:11.5px; white-space:nowrap; }
+input[type="checkbox"] { width:12px; height:12px; }
+.jiazi-row { display:flex; align-items:center; gap:4px; justify-content:center; }
+.jc { display:inline-block; width:20px; text-align:center; font-size:12px; }
+.ji { width:20px !important; text-align:right; border:none !important; border-bottom:1px solid #333 !important; font-size:12px; padding:0 !important; background:transparent; }
+textarea { border:none; outline:none; resize:none; font-family:inherit; font-size:12px; background:transparent; width:100%; height:52px; }
+textarea.filled { background:#f0fff4; }
+.footer { display:flex; justify-content:space-between; margin-top:8px; font-size:11px; color:#444; }
+</style>
+</head>
+<body>
+<div class="controls">
+  <h2>🖨️ 元頂集團 付款申請單</h2>
+  <button class="btn btn-clear" onclick="clearForm()">清除重填</button>
+  <button class="btn btn-print" onclick="window.print()">列印 / 存PDF</button>
+</div>
+<div class="autofill-banner" id="autofillBanner">✅ 已從 Lark 自動帶入資料，確認後直接列印即可</div>
+ 
+<div class="page">
+  <div class="company-name">元頂集團</div>
+  <div class="form-title">付款申請單</div>
+ 
+  <div class="header-row">
+    申請日期：
+    <input type="text" id="year" style="width:44px">年
+    <input type="text" id="month" style="width:28px">月
+    <input type="text" id="day" style="width:28px">日
+  </div>
+ 
+  <table>
+    <!-- Row 1: 部門/支付對象/廠商名稱 -->
+    <tr>
+      <td class="lc" style="width:40px">申請<br>部門</td>
+      <td style="width:16%"><input type="text" id="dept" style="width:100%"></td>
+      <td class="lc" style="width:40px">支付<br>對象</td>
+      <td style="width:16%"><input type="text" id="payee" style="width:100%"></td>
+      <td class="lc" style="width:40px">廠商<br>名稱</td>
+      <td style="width:28%"><input type="text" id="vendor" style="width:100%"></td>
+      <td class="lc" style="width:30px">編號</td>
+      <td style="width:12%"><input type="text" id="serial" style="width:100%"></td>
+    </tr>
+ 
+    <!-- Row 2: 支付性質 + 支付方式 -->
+    <tr>
+      <td class="lc">支付<br>性質</td>
+      <td colspan="5" style="padding:5px 8px;">
+        <div class="cg">
+          <label><input type="checkbox" id="cb_貨款"> 貨款</label>
+          <label><input type="checkbox" id="cb_工程款"> 工程款</label>
+          <label><input type="checkbox" id="cb_薪工資"> 薪工資</label>
+          <label><input type="checkbox" id="cb_公用事業費用"> 公用事業費用（<input type="text" id="cb_公用detail" style="width:50px">）</label>
+          <label><input type="checkbox" id="cb_交際"> 交際</label>
+        </div>
+        <div class="cg" style="margin-top:4px">
+          <label><input type="checkbox" id="cb_稅捐"> 稅捐</label>
+          <label><input type="checkbox" id="cb_勞健退"> 勞健退</label>
+          <label><input type="checkbox" id="cb_租金"> 租金</label>
+          <label><input type="checkbox" id="cb_差旅"> 差旅</label>
+          <label><input type="checkbox" id="cb_其他"> 其他（<input type="text" id="cb_其他detail" style="width:60px">）</label>
+        </div>
+      </td>
+      <td class="lc" style="width:36px">支付<br>方式</td>
+      <td style="padding:5px 6px;">
+        <label style="display:flex;align-items:center;gap:2px;font-size:12px;cursor:pointer;margin-bottom:3px"><input type="checkbox" id="pay_匯款"> 匯款</label>
+        <label style="display:flex;align-items:center;gap:2px;font-size:12px;cursor:pointer;margin-bottom:3px"><input type="checkbox" id="pay_支票"> 支票</label>
+        <label style="display:flex;align-items:center;gap:2px;font-size:12px;cursor:pointer"><input type="checkbox" id="pay_現金"> 現金</label>
+      </td>
+    </tr>
+ 
+    <!-- Row 3: 事由 + 備註 -->
+    <tr>
+      <td class="lc">事由</td>
+      <td colspan="5" style="vertical-align:top; padding:5px 6px;">
+        <textarea id="reason"></textarea>
+      </td>
+      <td class="lc">備<br>註</td>
+      <td style="vertical-align:top; padding:5px 6px;">
+        <textarea id="remark"></textarea>
+      </td>
+    </tr>
+ 
+    <!-- Row 4: 金額 -->
+    <tr>
+      <td class="lc" colspan="2">付款總金額：</td>
+      <td colspan="4">
+        <div class="jiazi-row">
+          <input type="text" class="ji" id="n1" maxlength="1"><span class="jc">仟</span>
+          <input type="text" class="ji" id="n2" maxlength="1"><span class="jc">佰</span>
+          <input type="text" class="ji" id="n3" maxlength="1"><span class="jc">拾</span>
+          <input type="text" class="ji" id="n4" maxlength="1"><span class="jc">萬</span>
+          <input type="text" class="ji" id="n5" maxlength="1"><span class="jc">仟</span>
+          <input type="text" class="ji" id="n6" maxlength="1"><span class="jc">佰</span>
+          <input type="text" class="ji" id="n7" maxlength="1"><span class="jc">拾</span>
+          <span style="font-size:11px">元整</span>
+        </div>
+      </td>
+      <td class="lc" style="width:36px">合計</td>
+      <td style="min-width:90px;"><input type="text" id="total" style="width:100%;font-weight:bold;font-size:11px;" placeholder="NT$0"></td>
+    </tr>
+ 
+    <!-- Row 5: 簽核 -->
+    <tr>
+      <td colspan="8" style="height:65px; padding:6px 10px; vertical-align:top;">
+        <div style="display:flex; width:100%;">
+          <div style="flex:1; font-size:12px;">董事長室：</div>
+          <div style="flex:1; font-size:12px;">主管：</div>
+          <div style="flex:1; font-size:12px;">申請人：<span id="applicant_show"></span></div>
+        </div>
+      </td>
+    </tr>
+  </table>
+ 
+  <div class="footer">
+    <span>版本：01-2020-12</span>
+    <div style="display:flex;gap:32px;">
+      <span>財務部/主管：＿＿＿＿</span>
+      <span>出納：＿＿＿＿</span>
+      <span>會計：＿＿＿＿</span>
+    </div>
+  </div>
+</div>
+ 
+<script>
+function fillAmount(val) {
+  const num = parseInt(String(val).replace(/[^0-9]/g,'') || 0);
+  const digits = [
+    Math.floor(num/10000000)%10, Math.floor(num/1000000)%10,
+    Math.floor(num/100000)%10,  Math.floor(num/10000)%10,
+    Math.floor(num/1000)%10,    Math.floor(num/100)%10,
+    Math.floor(num/10)%10,
+  ];
+  let first = digits.findIndex(d => d!==0);
+  if (first === -1) first = 6;
+  ['n1','n2','n3','n4','n5','n6','n7'].forEach((id,i) => {
+    document.getElementById(id).value = (i < first) ? '' : String(digits[i]);
+  });
+}
+ 
+function autoFillFromURL() {
+  const p = new URLSearchParams(window.location.search);
+  if (!p.toString()) return;
+  let filled = false;
+ 
+  ['dept','payee','vendor','serial'].forEach(k => {
+    if (p.get(k)) { document.getElementById(k).value=p.get(k); document.getElementById(k).classList.add('filled'); filled=true; }
+  });
+  if (p.get('applicant')) { document.getElementById('applicant_show').textContent=p.get('applicant'); filled=true; }
+  ['reason','remark'].forEach(k => {
+    if (p.get(k)) { const el=document.getElementById(k); el.value=p.get(k); el.classList.add('filled'); filled=true; }
+  });
+  if (p.get('total')) {
+    const num=parseInt(p.get('total').replace(/[^0-9]/g,'')||0);
+    document.getElementById('total').value='NT$'+num.toLocaleString();
+    document.getElementById('total').classList.add('filled');
+    fillAmount(num); filled=true;
+  }
+  if (p.get('nature')) {
+    p.get('nature').split(/[,，、]/).forEach(n => {
+      const t=n.trim();
+      ['貨款','工程款','薪工資','公用事業費用','交際','稅捐','勞健退','租金','差旅','其他'].forEach(key => {
+        if (t.includes(key)||key.includes(t)) { const cb=document.getElementById('cb_'+key); if(cb){cb.checked=true;filled=true;} }
+      });
+    });
+  }
+  if (p.get('pay')) { const cb=document.getElementById('pay_'+p.get('pay').trim()); if(cb){cb.checked=true;filled=true;} }
+  if (p.get('date')) {
+    const dateVal = p.get('date');
+    let y, m, d;
+    if (/^\d{10,13}$/.test(dateVal)) {
+      // Unix 時間戳記（秒或毫秒）
+      const ts = dateVal.length === 13 ? parseInt(dateVal) : parseInt(dateVal) * 1000;
+      const dt = new Date(ts);
+      y = dt.getFullYear();
+      m = dt.getMonth() + 1;
+      d = dt.getDate();
+    } else {
+      // 一般格式 2026/06/10 或 2026-06-10
+      const parts = dateVal.split(/[\/\-]/);
+      if (parts.length >= 3) { y=parts[0]; m=parseInt(parts[1]); d=parseInt(parts[2]); }
+    }
+    if (y) {
+      document.getElementById('year').value = y;
+      document.getElementById('month').value = m;
+      document.getElementById('day').value = d;
+      filled = true;
+    }
+  }
+  if (filled) document.getElementById('autofillBanner').style.display='block';
+}
+ 
+function clearForm() {
+  document.querySelectorAll('input[type="text"]').forEach(i=>{i.value='';i.classList.remove('filled');});
+  document.querySelectorAll('input[type="checkbox"]').forEach(i=>i.checked=false);
+  document.querySelectorAll('textarea').forEach(i=>{i.value='';i.classList.remove('filled');});
+  document.getElementById('applicant_show').textContent='';
+  document.getElementById('autofillBanner').style.display='none';
+}
+ 
+document.getElementById('total').addEventListener('input',function(){fillAmount(this.value);});
+
+function applyEmbedMode() {
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('embed') === '1') {
+    document.querySelector('.controls').style.display = 'none';
+    document.body.style.background = 'white';
+    document.querySelector('.page').style.margin = '0';
+    document.querySelector('.page').style.boxShadow = 'none';
+  }
+}
+
+autoFillFromURL();
+applyEmbedMode();
+
+const p = new URLSearchParams(window.location.search);
+if (p.get('print') === '1') {
+  window.addEventListener('load', function() {
+    setTimeout(function() { window.focus(); window.print(); }, 400);
+  });
+}
+</script>
+</body>
+</html>
