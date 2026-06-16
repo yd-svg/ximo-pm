@@ -275,13 +275,15 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .bbw{padding:0 14px 10px}
 .bbt{height:5px;background:var(--sf2);border-radius:3px;margin-top:5px;overflow:hidden}
 .bbf{height:100%;border-radius:3px}
-.wir{padding:7px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);cursor:pointer}
+.wi-budget-hdr,.wir{display:grid;grid-template-columns:minmax(0,1fr) 92px 92px 92px;gap:8px;align-items:center;padding:7px 14px;border-bottom:1px solid var(--border)}
+.wi-budget-hdr{font-size:10px;color:var(--t3);background:var(--sf2)}
+.wi-budget-hdr span:not(:first-child),.wir .wv{text-align:right}
+.wir{cursor:pointer}
 .wir:hover{background:var(--sf2)}
 .wir:last-child{border-bottom:none}
-.wn{font-size:12px;flex:1}
-.wns{display:flex;gap:12px}
+.wn{font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wl{font-size:10px;color:var(--t3)}
-.wv{font-size:11px;font-weight:600}
+.wv{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
 
 /* table */
 .dt{width:100%;border-collapse:collapse}
@@ -500,6 +502,7 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
             <div class="fg"><label>事由</label><input type="text" id="p-reason" placeholder="填寫付款事由"></div>
             <div class="fg"><label>備註</label><input type="text" id="p-remark" placeholder="備註說明"></div>
             <div class="fg"><label>付款總金額</label><input type="text" id="p-total" placeholder="NT$0" oninput="updatePayUpper()"><div class="p-upper" id="p-upper"></div></div>
+            <div class="fg"><label>通知對象</label><select id="p-notify"><option value="會計">會計</option><option value="主PM">主PM</option></select></div>
             <div class="bss">
               <button class="bsub" onclick="prevPay()">確認資料預覽</button>
             </div>
@@ -708,7 +711,9 @@ function sw(btn,id){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   btn.classList.add('active');
   document.getElementById(id).classList.add('active');
-  if(id==='pg-journal') renderJournalPage();
+  if(id==='pg-journal') reloadJournal().then(function(){ renderJournalPage(); });
+  if(id==='pg-e') reloadExpenses().then(function(){ renderExpenses(); });
+  if(id==='pg-b') renderBudget();
   if(id==='pg-d') renderDesigns();
 }
 function sf(el,color){
@@ -2083,7 +2088,25 @@ function formatWeightProgress(wf, wiId) {
 
 function getProjectNameFromWi(wi) {
   if (!wi || !wi.fields) return '';
-  return getLinkText(wi.fields['所屬標案']);
+  var text = getLinkText(wi.fields['所屬標案']);
+  if (text) return text;
+  var ids = getLinkIds(wi.fields['所屬標案']);
+  if (ids[0]) {
+    var proj = projectsData.find(function(p) { return p.record_id === ids[0]; });
+    if (proj) return proj.fields['標案名稱'] || '';
+  }
+  return '';
+}
+
+function resolveProjectName(field) {
+  var text = getLinkText(field);
+  if (text) return text;
+  var ids = getLinkIds(field);
+  if (ids[0]) {
+    var proj = projectsData.find(function(p) { return p.record_id === ids[0]; });
+    if (proj) return proj.fields['標案名稱'] || '';
+  }
+  return '';
 }
 
 function getWorkitemsForProject(rec) {
@@ -2228,20 +2251,20 @@ function renderBudget() {
     var avail = parseFloat(f['可用成本']) || Math.round(untax / 2);
     var workitems = getWorkitemsForProject(rec);
     var spent = 0;
-    var wiRows = '';
+    var wiRows = '<div class="wi-budget-hdr"><span>工作項目</span><span>可用</span><span>已支出</span><span>剩餘</span></div>';
     workitems.forEach(function(wi) {
       var wf = wi.fields;
       var wName = wf['工作項目名稱'] || '';
       var wAvail = parseFloat(wf['可用成本']) || 0;
       var exp = expenseByWi[wi.record_id] || { spent: 0, untax: 0 };
       var wSpent = exp.spent;
+      if (!wSpent && wf['實際花費']) wSpent = parseFloat(wf['實際花費']) || 0;
       spent += wSpent;
       var wRemain = wAvail - wSpent;
-      wiRows += '<div class="wir"><div class="wn">'+wName+'</div><div class="wns">'
-        +'<div><div class="wl">可用</div><div class="wv">'+ntf(wAvail)+'</div></div>'
-        +'<div><div class="wl">已支出</div><div class="wv" style="color:#c0392b">'+ntf(wSpent)+'</div></div>'
-        +'<div><div class="wl">剩餘</div><div class="wv" style="color:'+color+'">'+ntf(wRemain)+'</div></div>'
-        +'</div></div>';
+      wiRows += '<div class="wir"><div class="wn">'+escHtml(wName)+'</div>'
+        +'<div class="wv">'+ntf(wAvail)+'</div>'
+        +'<div class="wv" style="color:#c0392b">'+ntf(wSpent)+'</div>'
+        +'<div class="wv" style="color:'+color+'">'+ntf(wRemain)+'</div></div>';
     });
     var remain = avail - spent;
     var pct = avail > 0 ? Math.min(100, Math.round(spent/avail*100)) : 0;
@@ -2882,11 +2905,11 @@ function journalLinkText(rec, keys) {
   for (var i = 0; i < keys.length; i++) {
     var field = f[keys[i]];
     if (!field) continue;
-    var text = getLinkText(field);
+    var text = resolveProjectName(field) || getLinkText(field);
     if (text) return text;
     if (Array.isArray(field) && field[0]) {
       var names = field.map(function(item) {
-        return item.text_arr && item.text_arr[0] ? item.text_arr[0] : (item.name || '');
+        return resolveProjectName(item) || (item.text_arr && item.text_arr[0] ? item.text_arr[0] : (item.name || ''));
       }).filter(Boolean);
       if (names.length) return names.join('、');
     }
@@ -2905,6 +2928,10 @@ function journalTaskNames(rec, keys) {
       return task ? (task.fields['任務名稱'] || '任務') : '';
     }).filter(Boolean);
     if (names.length) return names.join('、');
+    if (Array.isArray(field)) {
+      var texts = field.map(function(item) { return getLinkText(item); }).filter(Boolean);
+      if (texts.length) return texts.join('、');
+    }
     var text = getLinkText(field);
     if (text) return text;
   }
@@ -3283,10 +3310,8 @@ function reloadJournal() {
 
 function journalTs(rec) {
   var val = journalField(rec, ['日期', '日報日期']);
-  if (val === '' || val === null || val === undefined) return null;
-  if (typeof val === 'number') return val < 1e12 ? val * 1000 : val;
-  var d = new Date(val);
-  return isNaN(d.getTime()) ? null : d.getTime();
+  var d = parseTs(val);
+  return d ? d.getTime() : null;
 }
 
 function journalHasBlock(rec) {
@@ -3320,6 +3345,18 @@ function getJournalItemsInRange(days) {
   });
 }
 
+function reloadExpenses() {
+  return fetch(API + '?table=expenses').then(function(r) { return r.json(); })
+    .then(function(data) {
+      expensesData = data.records || [];
+      return expensesData;
+    })
+    .catch(function(err) {
+      console.error('reloadExpenses', err);
+      return expensesData;
+    });
+}
+
 function journalField(rec, keys) {
   var f = rec.fields || {};
   for (var i = 0; i < keys.length; i++) {
@@ -3341,7 +3378,7 @@ function collectJournalContent(rec) {
     doing = parsed.doing; done = parsed.done; blocked = parsed.block; tomorrow = parsed.tomorrow;
   }
   return {
-    proj: journalLinkText(rec, ['所屬專案', '標案名稱', '所屬標案']) || (f['所屬標案'] && f['所屬標案'].text_arr ? f['所屬標案'].text_arr[0] : '') || '',
+    proj: journalLinkText(rec, ['所屬專案', '標案名稱', '所屬標案']) || resolveProjectName(f['所屬標案']) || '',
     doing: doing, done: done, blocked: blocked, tomorrow: tomorrow,
     blockReason: blockReason, note: note,
     hasBlock: journalHasBlock(rec) || !!blocked || !!blockReason,
@@ -3404,10 +3441,10 @@ function renderJournalFeedList(recs, opts) {
 
 function renderJournalHtml(mode, area) {
   if (!area) return;
-  var items = getJournalItemsInRange(30);
+  var items = getJournalItemsInRange(90);
   if (mode === 'block') items = items.filter(journalIsBlockedActive);
   if (!items.length) {
-    area.innerHTML = '<div style="padding:12px;color:var(--t3);font-size:11px">' + (mode === 'block' ? '目前無卡關項目' : '近 30 天尚無日誌') + '</div>';
+    area.innerHTML = '<div style="padding:12px;color:var(--t3);font-size:11px">' + (mode === 'block' ? '目前無卡關項目' : '近 90 天尚無日誌') + '</div>';
     return;
   }
 
@@ -3495,8 +3532,10 @@ function sendPaymentNotify(data, printPath) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       dept: data.dept,
+      payee: data.payee,
       reason: data.reason,
       amount: data.amountDisplay,
+      notifyTo: data.notifyTo || '會計',
       printPath: printPath
     })
   }).then(function(r) { return r.json(); });
@@ -4197,7 +4236,8 @@ function collectPaymentFields() {
     total: totalNum,
     nature: nats.join('、'),
     natureList: nats,
-    amountDisplay: totalNum ? 'NT$' + parseInt(totalNum,10).toLocaleString() : ''
+    amountDisplay: totalNum ? 'NT$' + parseInt(totalNum,10).toLocaleString() : '',
+    notifyTo: (document.getElementById('p-notify') && document.getElementById('p-notify').value) || '會計'
   };
 }
 

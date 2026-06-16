@@ -20,15 +20,22 @@ async function getToken() {
   return data.tenant_access_token;
 }
  
-// 讀取表格資料
+// 讀取表格資料（自動翻頁取回全部記錄）
 async function getRecords(token, tableId) {
-  const url = BASE_URL + '/bitable/v1/apps/' + APP_TOKEN + '/tables/' + tableId + '/records?page_size=100';
-  const res = await fetch(url, {
-    headers: { 'Authorization': 'Bearer ' + token }
-  });
-  const data = await res.json();
-  if (data.code !== 0) throw new Error('Records error: ' + data.msg + ' code:' + data.code);
-  return data.data ? data.data.items || [] : [];
+  var items = [];
+  var pageToken = '';
+  do {
+    var url = BASE_URL + '/bitable/v1/apps/' + APP_TOKEN + '/tables/' + tableId + '/records?page_size=500';
+    if (pageToken) url += '&page_token=' + encodeURIComponent(pageToken);
+    const res = await fetch(url, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (data.code !== 0) throw new Error('Records error: ' + data.msg + ' code:' + data.code);
+    if (data.data && data.data.items) items = items.concat(data.data.items);
+    pageToken = data.data && data.data.has_more ? (data.data.page_token || '') : '';
+  } while (pageToken);
+  return items;
 }
  
 // 新增記錄
@@ -145,17 +152,19 @@ export default async function handler(req, res) {
       const printUrl = b.printPath
         ? site + '/' + b.printPath
         : (b.printUrl || site);
+      const notifyTo = b.notifyTo || process.env.PAYMENT_NOTIFY_TARGET || '會計';
       const text = [
-        '您有一筆付款申請單待列印 🖨️',
-        '請點以下連結確認後列印：',
+        '【付款申請待處理】',
+        '通知對象：' + notifyTo,
         '申請部門：' + (b.dept || ''),
+        '支付對象：' + (b.payee || ''),
         '事由：' + (b.reason || ''),
         '金額：' + (b.amount || ''),
         printUrl,
         '請點連結確認資料後列印送會計 👇'
       ].join('\n');
       const result = await sendWebhook(text);
-      return res.status(200).json({ ok: true, notify: result });
+      return res.status(200).json({ ok: true, notify: result, notifyTo: notifyTo });
     }
 
     if (req.method === 'POST') {
