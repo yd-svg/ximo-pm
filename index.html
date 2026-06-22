@@ -648,6 +648,7 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
         <div class="fg"><label>合約開始日</label><input type="date" id="np-start"></div>
         <div class="fg"><label>合約結束日</label><input type="date" id="np-end"></div>
         <div class="fg"><label>合約金額</label><input type="text" placeholder="NT$0" id="ca" oninput="calcP()"></div>
+        <div class="fg"><label>Wiki 封存位置（選填）</label><input type="url" id="np-wiki-folder" placeholder="https://.../wiki/...（知識庫資料夾）"></div>
       </div>
       <div>
         <div class="fbox">
@@ -663,7 +664,8 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
   </div>
   <details class="manual-toggle"><summary>改用手動填寫（不經檔案）</summary>
     <div class="ppb2" style="margin-top:8px">
-      <div><div class="fg"><label>標案名稱</label><input type="text" id="np-name-manual" placeholder="115花蓮山茶"></div></div>
+      <div><div class="fg"><label>標案名稱</label><input type="text" id="np-name-manual" placeholder="115花蓮山茶"></div>
+      <div class="fg"><label>Wiki 封存位置（選填）</label><input type="url" id="np-wiki-folder-manual" placeholder="https://.../wiki/..."></div></div>
       <div><div class="fg"><label>合約金額</label><input type="text" id="ca-manual" placeholder="NT$0"></div></div>
     </div>
     <button type="button" class="bads" onclick="applyManualProject()">套用到上方欄位</button>
@@ -751,11 +753,14 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
   <div class="fg"><label>合約開始日</label><input type="date" id="ep-start"></div>
   <div class="fg"><label>合約結束日</label><input type="date" id="ep-end"></div>
   <div class="fg"><label>合約金額</label><input type="text" id="ep-amount" placeholder="NT$0"></div>
+  <div class="fg"><label>Wiki 封存位置</label><input type="url" id="ep-wiki-folder" placeholder="https://.../wiki/...（此標案專用知識庫資料夾）">
+    <div class="fg-hint" style="font-size:10px;color:var(--t3);margin-top:4px">封存時自動帶入；每個標案可設不同 Wiki 資料夾</div>
+  </div>
 </div><div class="ppf"><button class="bcan" onclick="cl('pp-edit-proj')">取消</button><button class="bpri" onclick="saveEditProject()">儲存</button></div></div></div>
 
 <!-- 標案封存至知識庫 -->
 <div class="po" id="pp-archive-proj"><div class="pp"><div class="pph"><h3>封存標案至知識庫</h3><button class="ppc" onclick="cancelArchiveProject()">✕</button></div><div class="ppb">
-  <p style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:12px">請貼上知識庫<strong>存放位置</strong>連結（資料夾或空白頁面皆可）。若該位置尚無多維表格，系統會<strong>自動從範本複製</strong>一份新頁面（標題為標案名稱），再寫入與後台相同結構的內容（僅此標案相關的工作項目、任務、支出、設計）。封存後標案將從前台隱藏。</p>
+  <p style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:12px">若已在標案設定「Wiki 封存位置」，會自動帶入。亦可手動修改。系統會從範本複製多維表格並寫入此標案資料，封存後標案將從前台隱藏。</p>
   <div id="ap-export-preview" class="ap-export-preview">載入中…</div>
   <div class="fg"><label>知識庫存放位置連結</label><input type="url" id="ap-wiki-url" placeholder="https://...（知識庫資料夾或頁面）" oninput="refreshArchivePreview()"></div>
   <div id="ap-proj-name" style="font-size:11px;color:var(--t3)"></div>
@@ -899,7 +904,7 @@ function resetProcFormForNewUpload() {
   parsedProjWorkItems = [];
   document.getElementById('proc-preview').style.display = 'none';
   document.getElementById('np-save-btn').disabled = true;
-  ['np-name', 'ca'].forEach(function(id) {
+  ['np-name', 'ca', 'np-wiki-folder', 'np-wiki-folder-manual'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -1588,7 +1593,7 @@ function resetProcForm() {
   if (prev) prev.style.display = 'none';
   var btn = document.getElementById('np-save-btn');
   if (btn) btn.disabled = true;
-  ['np-name', 'ca'].forEach(function(id) {
+  ['np-name', 'ca', 'np-wiki-folder', 'np-wiki-folder-manual'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -1627,6 +1632,9 @@ function saveProjectImport() {
   if (start) fields['合約開始日'] = dateInputToTs(start);
   if (end) fields['合約結束日'] = dateInputToTs(end);
   if (amount) fields['合約金額'] = amount;
+  var wikiFolder = (document.getElementById('np-wiki-folder').value || '').trim();
+  if (!wikiFolder) wikiFolder = (document.getElementById('np-wiki-folder-manual').value || '').trim();
+  if (wikiFolder) fields['Wiki存放位置'] = wikiFolder;
 
   var items = parsedProjWorkItems.filter(function(it) { return it.name && it.name.trim(); });
   var startTs = start ? dateInputToTs(start) : Date.now();
@@ -4726,14 +4734,22 @@ function isProjectVisible(rec) {
   return normalizeProjectStatus(rec.fields['狀態']) !== '封存';
 }
 
+function getFieldUrlText(field) {
+  if (!field) return '';
+  if (typeof field === 'string') return field.trim();
+  if (field.link) return String(field.link).trim();
+  if (field.text && /^https?:\/\//i.test(field.text)) return field.text.trim();
+  return '';
+}
+
+function getProjectArchiveFolderUrl(f) {
+  if (!f) return '';
+  return getFieldUrlText(f['Wiki存放位置']) || getFieldUrlText(f['Wiki連結']);
+}
+
 function getProjectWikiUrl(f) {
   if (!f) return '';
-  var v = f['知識庫連結'] || f['封存連結'] || f['Wiki連結'];
-  if (!v) return '';
-  if (typeof v === 'string') return v.trim();
-  if (v.link) return v.link;
-  if (v.text) return v.text;
-  return '';
+  return getFieldUrlText(f['封存連結']) || getFieldUrlText(f['知識庫連結']);
 }
 
 function setProjectWikiUrlField(fields, url) {
@@ -4824,7 +4840,7 @@ function openArchiveProjectPopup(projId, sel) {
   var nameEl = document.getElementById('ap-proj-name');
   if (nameEl) nameEl.textContent = '標案：' + (rec.fields['標案名稱'] || '');
   var urlEl = document.getElementById('ap-wiki-url');
-  if (urlEl) urlEl.value = getProjectWikiUrl(rec.fields) || '';
+  if (urlEl) urlEl.value = getProjectArchiveFolderUrl(rec.fields) || '';
   renderArchivePreview(projId);
   op('pp-archive-proj');
 }
@@ -5210,6 +5226,7 @@ function openEditProject(projId) {
   document.getElementById('ep-start').value = f['合約開始日'] ? tsToDateInput(f['合約開始日']) : '';
   document.getElementById('ep-end').value = f['合約結束日'] ? tsToDateInput(f['合約結束日']) : '';
   document.getElementById('ep-amount').value = f['合約金額'] ? 'NT$' + Math.round(f['合約金額']).toLocaleString() : '';
+  document.getElementById('ep-wiki-folder').value = getProjectArchiveFolderUrl(f);
   op('pp-edit-proj');
 }
 
@@ -5221,7 +5238,8 @@ function saveEditProject() {
     '主PM': rec.fields['主PM'],
     '合約開始日': rec.fields['合約開始日'],
     '合約結束日': rec.fields['合約結束日'],
-    '合約金額': rec.fields['合約金額']
+    '合約金額': rec.fields['合約金額'],
+    'Wiki存放位置': rec.fields['Wiki存放位置']
   } : null;
   var name = document.getElementById('ep-name').value.trim();
   if (!name) { alert('請填寫標案名稱'); return; }
@@ -5238,6 +5256,8 @@ function saveEditProject() {
     fields['合約未稅金額'] = Math.round(amount / 1.05);
     fields['可用成本'] = Math.round(amount / 1.05 / 2);
   }
+  var wikiFolder = (document.getElementById('ep-wiki-folder').value || '').trim();
+  fields['Wiki存放位置'] = wikiFolder || '';
   showConfirm({
     type: 'edit',
     title: '確認修改標案',
