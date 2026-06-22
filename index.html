@@ -282,7 +282,10 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .gtb{padding:8px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
 .gtb h3{font-size:13px;font-weight:600;flex:0 1 auto}
 .g-contract{font-size:11px;color:var(--t3);font-weight:500;white-space:nowrap}
-.gtb .pb{margin-left:auto}
+.gtb-actions{margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.gtb-ctrl-label{font-size:10px;color:var(--t3);font-weight:600;white-space:nowrap}
+.gtb-status{padding:4px 8px;border:1px solid var(--border);border-radius:var(--rs);font-size:11px;background:#fff;font-weight:600;color:var(--text);max-width:88px}
+.gtb .pb{margin-left:0;flex-shrink:0}
 .gb{display:flex;overflow:hidden;border-bottom:1px solid var(--border)}
 .gf{width:190px;flex-shrink:0;border-right:2px solid var(--border);background:var(--surface)}
 .gfh{height:52px;background:var(--sf2);border-bottom:1px solid var(--border);display:flex;align-items:flex-end;padding:0 10px 6px}
@@ -744,6 +747,13 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
   <div class="fg"><label>合約結束日</label><input type="date" id="ep-end"></div>
   <div class="fg"><label>合約金額</label><input type="text" id="ep-amount" placeholder="NT$0"></div>
 </div><div class="ppf"><button class="bcan" onclick="cl('pp-edit-proj')">取消</button><button class="bpri" onclick="saveEditProject()">儲存</button></div></div></div>
+
+<!-- 標案封存至知識庫 -->
+<div class="po" id="pp-archive-proj"><div class="pp"><div class="pph"><h3>封存標案至知識庫</h3><button class="ppc" onclick="cancelArchiveProject()">✕</button></div><div class="ppb">
+  <p style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:12px">請貼上 WIKI 知識庫中對應頁面的連結。確認後標案將從前台隱藏，並記錄於知識庫頁面中的多維表格；日後在該表格將狀態改為「未開始」或「進行中」即可重新顯示。</p>
+  <div class="fg"><label>知識庫頁面連結</label><input type="url" id="ap-wiki-url" placeholder="https://..."></div>
+  <div id="ap-proj-name" style="font-size:11px;color:var(--t3)"></div>
+</div><div class="ppf"><button class="bcan" onclick="cancelArchiveProject()">取消</button><button class="bpri" onclick="confirmArchiveProject()">確認封存</button></div></div></div>
 
 <!-- 修改支出明細 -->
 <div class="po" id="pp-edit-exp"><div class="pp"><div class="pph"><h3>修改支出明細</h3><button class="ppc" onclick="cl('pp-edit-exp')">✕</button></div><div class="ppb">
@@ -2525,6 +2535,7 @@ function renderBudget() {
   var expenseByWi = buildExpenseSummary();
   var html = '';
   projectsData.forEach(function(rec, i) {
+    if (!isProjectVisible(rec)) return;
     var f = rec.fields;
     var name = f['標案名稱'] || '未命名';
     var color = PROJECT_COLORS[i % PROJECT_COLORS.length];
@@ -2638,10 +2649,13 @@ function renderExpenses() {
 // ── 渲染 A 區標案列表 ──
 function renderProjects() {
   var html = '';
-  projectsData.forEach(function(rec, i) {
+  var visibleIdx = 0;
+  projectsData.forEach(function(rec) {
+    if (!isProjectVisible(rec)) return;
     var f = rec.fields;
     var name = f['標案名稱'] || '未命名';
-    var color = PROJECT_COLORS[i % PROJECT_COLORS.length];
+    var color = PROJECT_COLORS[visibleIdx % PROJECT_COLORS.length];
+    visibleIdx++;
     var pmName = personName(f['主PM']);
     var progress = Math.round((f['標案完成%'] || 0) * 100);
     var meta = pmName || '';
@@ -2697,6 +2711,8 @@ function renderTasks() {
     var wiId = wiIds[0] || null;
     var wi = wiId ? wiMap[wiId] : null;
     var projName = wi ? (wi.project || '其他') : '其他';
+    var projRec = projectsData.find(function(p) { return (p.fields['標案名稱'] || '') === projName; });
+    if (projRec && !isProjectVisible(projRec)) return;
     var progress = parseProgressVal(f['進度狀態'], f['進度數值']);
     if (!grouped[projName]) grouped[projName] = [];
     grouped[projName].push({
@@ -2737,6 +2753,7 @@ function renderTasks() {
 
   projectsData.forEach(function(rec) {
     var pname = rec.fields['標案名稱'] || '';
+    if (!isProjectVisible(rec)) return;
     if (!grouped[pname] || !grouped[pname].length) return;
     var color = projColors[pname] || '#888';
     html += '<div class="tgl" data-proj="' + escAttr(pname) + '"><div class="tgd" style="background:' + color + '"></div>' + pname + '<span class="tc">' + grouped[pname].length + '</span></div>';
@@ -2746,6 +2763,8 @@ function renderTasks() {
 
   Object.keys(grouped).forEach(function(pname) {
     if (!grouped[pname].length) return;
+    var projRec = projectsData.find(function(p) { return (p.fields['標案名稱'] || '') === pname; });
+    if (projRec && !isProjectVisible(projRec)) return;
     html += '<div class="tgl" data-proj="' + escAttr(pname) + '"><div class="tgd" style="background:#888"></div>' + pname + '<span class="tc">' + grouped[pname].length + '</span></div>';
     renderGroup(pname, '#888');
   });
@@ -2933,10 +2952,19 @@ function renderGanttFromData() {
     return;
   }
 
-  projectsData.forEach(function(rec, i) {
+  var hasVisibleProj = projectsData.some(isProjectVisible);
+  if (!hasVisibleProj) {
+    ganttArea.innerHTML = '<div style="padding:20px;color:var(--t3);font-size:12px;text-align:center;line-height:1.6">尚無進行中的標案<br><span style="font-size:11px">封存標案請至知識庫多維表格管理</span></div>';
+    return;
+  }
+
+  var visibleIdx = 0;
+  projectsData.forEach(function(rec) {
+    if (!isProjectVisible(rec)) return;
     var f = rec.fields;
     var name = f['標案名稱'] || '未命名';
-    var color = PROJECT_COLORS[i % PROJECT_COLORS.length];
+    var color = PROJECT_COLORS[visibleIdx % PROJECT_COLORS.length];
+    visibleIdx++;
     var progress = Math.round((f['標案完成%'] || 0) * 100);
     var contractStart = parseTs(f['合約開始日']);
     var contractEnd = parseTs(f['合約結束日']);
@@ -3019,13 +3047,19 @@ function renderGanttFromData() {
     else if (contractStart) contractLabel = fmtDate(f['合約開始日']) + ' –';
     else if (contractEnd) contractLabel = '– ' + fmtDate(f['合約結束日']);
 
-    var cardId = 'proj-' + i;
+    var cardId = 'proj-' + rec.record_id;
+    var projStatus = normalizeProjectStatus(f['狀態']);
+    var statusOpts = PROJECT_DISPLAY_STATUSES.map(function(s) {
+      return '<option value="' + s + '"' + (s === projStatus ? ' selected' : '') + '>' + s + '</option>';
+    }).join('');
     var card = document.createElement('div');
     card.className = 'gc';
-    card.innerHTML = '<div class="gtb"><div class="pdot" style="background:'+color+'"></div><h3>'+name+'</h3>'
+    card.innerHTML = '<div class="gtb"><div class="pdot" style="background:'+color+'"></div><h3>'+escHtml(name)+'</h3>'
       +(contractLabel?'<span class="g-contract">'+contractLabel+'</span>':'')
+      +'<div class="gtb-actions"><span class="gtb-ctrl-label">狀態</span>'
+      +'<select class="gtb-status" data-prev="'+escAttr(projStatus)+'" onchange="onGanttProjStatusChange(\''+rec.record_id+'\', this)">'+statusOpts+'</select>'
       +'<span class="pb" style="background:rgba(0,0,0,0.07);color:'+color+'">'+progress+'%</span>'
-      +'<button class="bsm" onclick="openPopup(\'pp-task\')">＋ 任務</button></div>'
+      +'<button type="button" class="bsm" onclick="openTaskForProject(\''+rec.record_id+'\')">＋ 任務</button></div></div>'
       +'<div class="gb" id="gb-'+cardId+'"></div>'
       +'<div class="gsb"><button onclick="scG(\''+cardId+'\',-200)">◀</button>'
       +'<input type="range" min="0" max="100" value="30" id="rng-'+cardId+'" oninput="scR(\''+cardId+'\',this.value)">'
@@ -4453,6 +4487,7 @@ function renderDesigns() {
 
   var html = '';
   projectsData.forEach(function(rec, i) {
+    if (!isProjectVisible(rec)) return;
     var pname = rec.fields['標案名稱'] || '';
     html += renderProjectBlock(pname, PROJECT_COLORS[i % PROJECT_COLORS.length]);
     delete byProject[pname];
@@ -4563,6 +4598,121 @@ var editingWiId = null;
 var editingProjId = null;
 var editingExpenseId = null;
 var editingDesignId = null;
+var archivingProjId = null;
+var archivingProjStatusSel = null;
+
+var PROJECT_DISPLAY_STATUSES = ['未開始', '進行中', '封存'];
+
+function normalizeProjectStatus(raw) {
+  var s = (raw || '').trim();
+  if (s === '封存') return '封存';
+  if (s === '未開始') return '未開始';
+  return '進行中';
+}
+
+function isProjectVisible(rec) {
+  if (!rec || !rec.fields) return false;
+  return normalizeProjectStatus(rec.fields['狀態']) !== '封存';
+}
+
+function getProjectWikiUrl(f) {
+  if (!f) return '';
+  var v = f['知識庫連結'] || f['封存連結'] || f['Wiki連結'];
+  if (!v) return '';
+  if (typeof v === 'string') return v.trim();
+  if (v.link) return v.link;
+  if (v.text) return v.text;
+  return '';
+}
+
+function setProjectWikiUrlField(fields, url) {
+  if (!url) return;
+  var text = url.replace(/^https?:\/\//, '');
+  if (text.length > 48) text = text.slice(0, 48) + '…';
+  var linkObj = { link: url, text: text || url };
+  fields['知識庫連結'] = linkObj;
+  fields['封存連結'] = url;
+}
+
+function onGanttProjStatusChange(projId, sel) {
+  var status = sel.value;
+  var rec = projectsData.find(function(p) { return p.record_id === projId; });
+  var prev = normalizeProjectStatus(rec ? rec.fields['狀態'] : '');
+  if (status === '封存') {
+    sel.value = prev;
+    openArchiveProjectPopup(projId, sel);
+    return;
+  }
+  if (status === prev) return;
+  apiPut('projects', projId, { '狀態': status }).then(function() {
+    if (rec) rec.fields['狀態'] = status;
+    sel.dataset.prev = status;
+    loadData();
+    showUndoToast('標案狀態已更新為「' + status + '」');
+  }).catch(function(err) { alert('狀態更新失敗：' + err.message); sel.value = prev; });
+}
+
+function openArchiveProjectPopup(projId, sel) {
+  var rec = projectsData.find(function(p) { return p.record_id === projId; });
+  if (!rec) return;
+  archivingProjId = projId;
+  archivingProjStatusSel = sel || null;
+  var nameEl = document.getElementById('ap-proj-name');
+  if (nameEl) nameEl.textContent = '標案：' + (rec.fields['標案名稱'] || '');
+  var urlEl = document.getElementById('ap-wiki-url');
+  if (urlEl) urlEl.value = getProjectWikiUrl(rec.fields) || '';
+  op('pp-archive-proj');
+}
+
+function cancelArchiveProject() {
+  archivingProjId = null;
+  archivingProjStatusSel = null;
+  cl('pp-archive-proj');
+}
+
+function confirmArchiveProject() {
+  if (!archivingProjId) return;
+  var url = (document.getElementById('ap-wiki-url').value || '').trim();
+  if (!url) { alert('請貼上知識庫頁面連結'); return; }
+  if (!/^https?:\/\//i.test(url)) { alert('請輸入完整的網址（需含 http:// 或 https://）'); return; }
+  var rec = projectsData.find(function(p) { return p.record_id === archivingProjId; });
+  var name = rec ? (rec.fields['標案名稱'] || '') : '';
+  var fields = { '狀態': '封存' };
+  setProjectWikiUrlField(fields, url);
+  showConfirm({
+    type: 'edit',
+    title: '確認封存標案',
+    body: '確定要封存「' + name + '」並轉移至知識庫嗎？<br><span style="font-size:11px;color:var(--t3)">封存後將不再顯示於前台。</span>',
+    okText: '確認封存',
+    onOk: function() {
+      var oldFields = rec ? {
+        '狀態': rec.fields['狀態'],
+        '知識庫連結': rec.fields['知識庫連結'],
+        '封存連結': rec.fields['封存連結']
+      } : null;
+      apiPut('projects', archivingProjId, fields).then(function() {
+        cancelArchiveProject();
+        if (oldFields) undoStack.push({ type: 'update', table: 'projects', recordId: archivingProjId, data: oldFields });
+        loadData();
+        showUndoToast('標案已封存');
+        if (confirm('標案已封存並記錄知識庫連結。是否開啟知識庫頁面？')) {
+          window.open(url, '_blank', 'noopener');
+        }
+      }).catch(function(err) { alert('封存失敗：' + err.message); });
+    }
+  });
+}
+
+function openTaskForProject(projId) {
+  preparePopup('pp-task');
+  var rec = projectsData.find(function(p) { return p.record_id === projId; });
+  var wiSel = document.getElementById('nt-wi');
+  if (rec && wiSel) {
+    var wis = getWorkitemsForProject(rec);
+    if (wis[0]) wiSel.value = wis[0].record_id;
+  }
+  op('pp-task');
+}
 
 function openEditDesign(desId) {
   var rec = designsData.find(function(r) { return r.record_id === desId; });
