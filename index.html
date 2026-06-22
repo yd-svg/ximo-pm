@@ -2189,7 +2189,7 @@ function loginWithCode(code, redirectUri) {
     body: JSON.stringify({ code: code, redirect_uri: redirectUri || '' })
   }).then(function(r) { return r.json(); }).then(function(res) {
     if (!res.ok || !res.user) throw new Error(res.error || res.msg || '登入失敗');
-    storeLoginUser(res.user);
+    finalizeLoginUser(res.user);
     return res.user;
   });
 }
@@ -2225,11 +2225,36 @@ function whenLarkReady() {
 function mapLarkClientUser(res) {
   var u = (res && res.userInfo) || res || {};
   return {
-    name: u.nickName || u.name || '',
-    enName: u.en_name || u.enName || '',
-    openId: u.open_id || u.openId || '',
+    name: u.nickName || u.name || u.displayName || u.display_name || '',
+    enName: u.en_name || u.enName || u.englishName || '',
+    openId: u.open_id || u.openId || u.lark_id || '',
     userId: u.user_id || u.userId || ''
   };
+}
+
+function enrichLoginUserFromMembers(user) {
+  if (!user || !membersData.length) return user;
+  if (user.openId) return user;
+  var name = user.name || user.enName;
+  if (!name) return user;
+  membersData.forEach(function(m) {
+    var f = m.fields || {};
+    var mn = personName(f['姓名'] || f['名稱'] || f['成員']);
+    if (!mn) return;
+    if (namesMatch(mn, name)) {
+      var oid = getPersonOpenId(f['姓名'] || f['名稱'] || f['成員']);
+      if (oid) user.openId = oid;
+      if (!user.name) user.name = mn;
+    }
+  });
+  return user;
+}
+
+function finalizeLoginUser(user) {
+  if (!user) return null;
+  enrichLoginUserFromMembers(user);
+  storeLoginUser(user);
+  return user;
 }
 function exchangeLarkAuthCode(appId, tt) {
   return new Promise(function(resolve) {
@@ -2272,7 +2297,7 @@ function tryLarkGetUserInfo(tt) {
       success: function(res) {
         var user = mapLarkClientUser(res);
         if (user.name || user.openId) {
-          storeLoginUser(user);
+          finalizeLoginUser(user);
           resolve(user);
         } else resolve(null);
       },
@@ -2590,10 +2615,17 @@ function loadExtraData() {
     renderGanttFromData();
     buildMembersMap();
     fillMemberSelects();
+    var cachedUser = getCurrentLoginUser();
+    if (cachedUser) {
+      enrichLoginUserFromMembers(cachedUser);
+      storeLoginUser(cachedUser);
+    }
     resolveLoginUser().then(function(user) {
-      if (user && user.name) {
+      if (user) {
+        enrichLoginUserFromMembers(user);
+        storeLoginUser(user);
         var authorSel = document.getElementById('dl-author');
-        if (authorSel) {
+        if (authorSel && user.name) {
           for (var i = 0; i < authorSel.options.length; i++) {
             if (authorSel.options[i].text === user.name) { authorSel.selectedIndex = i; break; }
           }
@@ -2922,6 +2954,12 @@ function renderTasks() {
 // ── 右側：待辦提醒 ──
 var todoReminderScope = 'mine';
 
+function getEffectiveTodoScope() {
+  if (todoReminderScope === 'all') return 'all';
+  if (getCurrentLoginUser()) return 'mine';
+  return 'all';
+}
+
 function setTodoScope(scope) {
   todoReminderScope = scope === 'all' ? 'all' : 'mine';
   document.querySelectorAll('.todo-scope-btn').forEach(function(btn) {
@@ -2999,13 +3037,14 @@ function renderTeamPanel() {
   var area = document.getElementById('team-task-list');
   if (!area) return;
 
-  var buckets = buildTodoTaskItems(todoReminderScope);
+  var effectiveScope = getEffectiveTodoScope();
+  var buckets = buildTodoTaskItems(effectiveScope);
   var html = '';
   if (todoReminderScope === 'mine' && !getCurrentLoginUser()) {
     if (loginResolving) {
       html += '<div class="todo-login-banner">正在取得 Lark 登入狀態…</div>';
     } else {
-      html += '<div class="todo-login-banner">「我的」依 Lark 登入帳號篩選任務。若在 Lark 內仍無法自動登入，請 <button type="button" class="todo-login-link" onclick="startBrowserLarkLogin()">點此 Lark 登入</button></div>';
+      html += '<div class="todo-login-banner">尚未辨識 Lark 帳號，暫顯示<strong>全部</strong>待辦。可點 <button type="button" class="todo-login-link" onclick="startBrowserLarkLogin()">Lark 登入</button>，或切換「全部」。</div>';
     }
   }
   html += renderTodoSection('已逾期', 'overdue', buckets.overdue, '無逾期任務');
