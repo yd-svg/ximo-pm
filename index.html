@@ -134,6 +134,10 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .todo-login-warn{color:var(--warn)}
 .todo-login-link{border:none;background:none;padding:0;font-size:10px;color:var(--c2);cursor:pointer;font-weight:600;text-decoration:underline}
 .todo-login-banner{font-size:11px;color:var(--t2);background:var(--sf2);border:1px solid var(--border);border-radius:var(--rs);padding:8px 10px;margin-bottom:10px;line-height:1.5}
+.ap-export-preview{margin:12px 0;padding:10px 12px;background:var(--sf2);border:1px solid var(--border);border-radius:var(--rs)}
+.ap-export-title{font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px}
+.ap-export-list{list-style:none;padding:0;margin:0;font-size:11px;color:var(--t2);line-height:1.7}
+.ap-export-list li::before{content:'· ';color:var(--t3)}
 
 /* journal page */
 .jpage-single{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);display:flex;flex-direction:column;overflow:hidden;min-height:calc(100vh - var(--th) - 36px)}
@@ -304,6 +308,7 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .gtr{height:40px;border-bottom:1px solid var(--border);position:relative}
 .gtr:last-child{border-bottom:none}
 .gbar{position:absolute;height:22px;top:50%;transform:translateY(-50%);border-radius:6px;display:flex;align-items:center;padding:0 8px;font-size:10px;color:rgba(255,255,255,.98);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;cursor:pointer;min-width:4px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.gbar.overdue{background:var(--danger)!important}
 .gbar:hover{opacity:.88}
 .tline{position:absolute;top:0;bottom:0;width:2px;background:var(--report);z-index:5;pointer-events:none}
 .tlineh{position:absolute;top:0;width:2px;height:52px;background:var(--report);z-index:5;pointer-events:none}
@@ -750,8 +755,9 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 
 <!-- 標案封存至知識庫 -->
 <div class="po" id="pp-archive-proj"><div class="pp"><div class="pph"><h3>封存標案至知識庫</h3><button class="ppc" onclick="cancelArchiveProject()">✕</button></div><div class="ppb">
-  <p style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:12px">請貼上 WIKI 知識庫中對應頁面的連結。確認後標案將從前台隱藏，並記錄於知識庫頁面中的多維表格；日後在該表格將狀態改為「未開始」或「進行中」即可重新顯示。</p>
-  <div class="fg"><label>知識庫頁面連結</label><input type="url" id="ap-wiki-url" placeholder="https://..."></div>
+  <p style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:12px">請貼上<strong>此標案專用</strong>的 WIKI 知識庫頁面連結（每次封存可指向不同多維表格）。系統會自動辨識該頁面的多維表格，並輸出與後台相同結構的內容（僅此標案相關的工作項目、任務、支出、設計）。封存後標案將從前台隱藏；日後在該多維表格將狀態改為「未開始」或「進行中」即可重新顯示。</p>
+  <div id="ap-export-preview" class="ap-export-preview">載入中…</div>
+  <div class="fg"><label>知識庫頁面連結</label><input type="url" id="ap-wiki-url" placeholder="https://..." oninput="refreshArchivePreview()"></div>
   <div id="ap-proj-name" style="font-size:11px;color:var(--t3)"></div>
 </div><div class="ppf"><button class="bcan" onclick="cancelArchiveProject()">取消</button><button class="bpri" onclick="confirmArchiveProject()">確認封存</button></div></div></div>
 
@@ -1896,7 +1902,9 @@ function paintGantt(key,proj,vs,ve,total,cw){
       var top = 4 + bi * 20;
       var barColor = bar.design ? DESIGN_GANTT_COLOR : (bar.c || proj.color);
       var clickAttr = bar.id ? ' onclick="openTaskDetail(\'' + bar.id + '\')"' : '';
-      bH+='<div class="gbar" style="left:'+ax+'px;width:'+aw+'px;top:'+top+'px;transform:none;height:16px;background:'+barColor+';opacity:'+bar.o+'"'+clickAttr+' title="'+escAttr(bar.l)+'">'+bar.l+'</div>';
+      var overdueClass = bar.overdue ? ' overdue' : '';
+      var bgStyle = bar.overdue ? '' : 'background:' + barColor + ';';
+      bH+='<div class="gbar'+overdueClass+'" style="left:'+ax+'px;width:'+aw+'px;top:'+top+'px;transform:none;height:16px;'+bgStyle+'opacity:'+bar.o+'"'+clickAttr+' title="'+escAttr(bar.l)+'">'+bar.l+'</div>';
     });
     tmH+='<div class="gtr" style="width:'+tw+'px;height:'+rowH+'px">'+bH+'</div>';
   });
@@ -2996,12 +3004,14 @@ function renderGanttFromData() {
           if (wiStart && tStart < wiStart) tStart = wiStart;
         }
         var tProg = parseProgressVal(tf['進度狀態'], tf['進度數值']);
+        var dueDiff = getDueDayDiff(tf['預計完成日']);
         bars.push({
           s: toDateStr(tStart),
           e: toDateStr(tDue),
           l: tName,
           o: tProg >= 100 ? 1 : (tProg > 0 ? 0.9 : 0.55),
-          id: t.record_id
+          id: t.record_id,
+          overdue: tProg < 100 && dueDiff !== null && dueDiff < 0
         });
       });
 
@@ -3056,7 +3066,7 @@ function renderGanttFromData() {
     card.className = 'gc';
     card.innerHTML = '<div class="gtb"><div class="pdot" style="background:'+color+'"></div><h3>'+escHtml(name)+'</h3>'
       +(contractLabel?'<span class="g-contract">'+contractLabel+'</span>':'')
-      +'<div class="gtb-actions"><span class="gtb-ctrl-label">狀態</span>'
+      +'<div class="gtb-actions">'
       +'<select class="gtb-status" data-prev="'+escAttr(projStatus)+'" onchange="onGanttProjStatusChange(\''+rec.record_id+'\', this)">'+statusOpts+'</select>'
       +'<span class="pb" style="background:rgba(0,0,0,0.07);color:'+color+'">'+progress+'%</span>'
       +'<button type="button" class="bsm" onclick="openTaskForProject(\''+rec.record_id+'\')">＋ 任務</button></div></div>'
@@ -4600,6 +4610,7 @@ var editingExpenseId = null;
 var editingDesignId = null;
 var archivingProjId = null;
 var archivingProjStatusSel = null;
+var archivePreviewTimer = null;
 
 var PROJECT_DISPLAY_STATUSES = ['未開始', '進行中', '封存'];
 
@@ -4652,6 +4663,51 @@ function onGanttProjStatusChange(projId, sel) {
   }).catch(function(err) { alert('狀態更新失敗：' + err.message); sel.value = prev; });
 }
 
+function renderArchivePreview(projId) {
+  var el = document.getElementById('ap-export-preview');
+  if (!el) return;
+  var wikiUrl = (document.getElementById('ap-wiki-url') && document.getElementById('ap-wiki-url').value || '').trim();
+  el.textContent = '載入中…';
+  var q = '?action=project-bundle&projectId=' + encodeURIComponent(projId);
+  if (wikiUrl) q += '&wikiUrl=' + encodeURIComponent(wikiUrl);
+  fetch(API + q)
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.error) { el.textContent = res.error; return; }
+      var html = '<div class="ap-export-title">將輸出以下內容（結構與後台相同）</div>'
+        + '<ul class="ap-export-list">'
+        + '<li>標案 1 筆</li>'
+        + '<li>工作項目 ' + (res.counts.workitems || 0) + ' 筆</li>'
+        + '<li>任務 ' + (res.counts.tasks || 0) + ' 筆</li>'
+        + '<li>支出 ' + (res.counts.expenses || 0) + ' 筆</li>'
+        + '<li>設計 ' + (res.counts.designs || 0) + ' 筆</li>'
+        + '</ul>';
+      if (wikiUrl) {
+        if (res.wikiTarget && res.wikiTarget.tableNames) {
+          html += '<div class="ap-export-title" style="margin-top:8px">目標多維表格已辨識</div>'
+            + '<ul class="ap-export-list">'
+            + '<li>標案表：' + (res.wikiTarget.tableNames.projects || '') + '</li>'
+            + '<li>工作項目表：' + (res.wikiTarget.tableNames.workitems || '') + '</li>'
+            + '<li>任務表：' + (res.wikiTarget.tableNames.tasks || '') + '</li>'
+            + '<li>支出表：' + (res.wikiTarget.tableNames.expenses || '') + '</li>'
+            + '<li>設計表：' + (res.wikiTarget.tableNames.designs || '') + '</li>'
+            + '</ul>';
+        } else if (res.wikiTargetError) {
+          html += '<div style="margin-top:8px;font-size:11px;color:var(--danger)">無法辨識目標表格：' + res.wikiTargetError + '</div>';
+        }
+      }
+      el.innerHTML = html;
+    }).catch(function() {
+      el.textContent = '無法載入預覽';
+    });
+}
+
+function refreshArchivePreview() {
+  if (!archivingProjId) return;
+  if (archivePreviewTimer) clearTimeout(archivePreviewTimer);
+  archivePreviewTimer = setTimeout(function() { renderArchivePreview(archivingProjId); }, 400);
+}
+
 function openArchiveProjectPopup(projId, sel) {
   var rec = projectsData.find(function(p) { return p.record_id === projId; });
   if (!rec) return;
@@ -4661,6 +4717,7 @@ function openArchiveProjectPopup(projId, sel) {
   if (nameEl) nameEl.textContent = '標案：' + (rec.fields['標案名稱'] || '');
   var urlEl = document.getElementById('ap-wiki-url');
   if (urlEl) urlEl.value = getProjectWikiUrl(rec.fields) || '';
+  renderArchivePreview(projId);
   op('pp-archive-proj');
 }
 
@@ -4677,28 +4734,41 @@ function confirmArchiveProject() {
   if (!/^https?:\/\//i.test(url)) { alert('請輸入完整的網址（需含 http:// 或 https://）'); return; }
   var rec = projectsData.find(function(p) { return p.record_id === archivingProjId; });
   var name = rec ? (rec.fields['標案名稱'] || '') : '';
-  var fields = { '狀態': '封存' };
-  setProjectWikiUrlField(fields, url);
   showConfirm({
     type: 'edit',
     title: '確認封存標案',
-    body: '確定要封存「' + name + '」並轉移至知識庫嗎？<br><span style="font-size:11px;color:var(--t3)">封存後將不再顯示於前台。</span>',
+    body: '確定要封存「' + name + '」並輸出相關多維表格至知識庫嗎？<br><span style="font-size:11px;color:var(--t3)">封存後將不再顯示於前台。</span>',
     okText: '確認封存',
     onOk: function() {
-      var oldFields = rec ? {
-        '狀態': rec.fields['狀態'],
-        '知識庫連結': rec.fields['知識庫連結'],
-        '封存連結': rec.fields['封存連結']
-      } : null;
-      apiPut('projects', archivingProjId, fields).then(function() {
+      var btn = document.querySelector('#pp-archive-proj .bpri');
+      if (btn) { btn.disabled = true; btn.textContent = '封存中…'; }
+      fetch(API + '?action=archive-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: archivingProjId, wikiUrl: url })
+      }).then(function(r) { return r.json(); }).then(function(res) {
+        if (!res.ok) throw new Error(res.error || res.msg || '封存失敗');
+        var savedProjId = archivingProjId;
+        var oldFields = rec ? {
+          '狀態': rec.fields['狀態'],
+          '知識庫連結': rec.fields['知識庫連結'],
+          '封存連結': rec.fields['封存連結'],
+          '封存摘要': rec.fields['封存摘要']
+        } : null;
         cancelArchiveProject();
-        if (oldFields) undoStack.push({ type: 'update', table: 'projects', recordId: archivingProjId, data: oldFields });
+        if (oldFields) undoStack.push({ type: 'update', table: 'projects', recordId: savedProjId, data: oldFields });
         loadData();
         showUndoToast('標案已封存');
-        if (confirm('標案已封存並記錄知識庫連結。是否開啟知識庫頁面？')) {
+        var msg = (res.wikiNote || res.summary || '');
+        if (res.copyError && !res.copiedToWikiBase) msg += '\n' + res.copyError;
+        if (confirm(msg + '\n\n是否開啟知識庫頁面？')) {
           window.open(url, '_blank', 'noopener');
         }
-      }).catch(function(err) { alert('封存失敗：' + err.message); });
+      }).catch(function(err) {
+        alert('封存失敗：' + err.message);
+      }).finally(function() {
+        if (btn) { btn.disabled = false; btn.textContent = '確認封存'; }
+      });
     }
   });
 }
