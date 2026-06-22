@@ -167,6 +167,37 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .jc-block-btn:hover{background:var(--report-hover)}
 .jfeed-proj-hdr{font-size:13px;font-weight:700;padding:9px 12px;border-radius:var(--rs);margin-bottom:10px;display:flex;align-items:center;gap:8px;color:#fff}
 .jfeed-proj-count{font-size:11px;opacity:.85;font-weight:600}
+.j-today-label{font-size:12px;color:var(--t3);font-weight:500}
+.j-dash-kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.j-kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.j-kpi-label{font-size:12px;color:var(--t2);margin-bottom:6px}
+.j-kpi-val{font-size:28px;font-weight:700;line-height:1.1}
+.j-kpi-done .j-kpi-val{color:#1a7a45}
+.j-kpi-doing .j-kpi-val{color:#1a4a7a}
+.j-kpi-block .j-kpi-val{color:var(--danger)}
+.j-kpi-tomorrow .j-kpi-val{color:var(--warn)}
+.j-person-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.j-person-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.j-person-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}
+.j-person-name{font-size:16px;font-weight:700;margin:0 0 2px}
+.j-person-sub{font-size:12px;color:var(--t3)}
+.j-person-badge{font-size:12px;padding:6px 10px;border-radius:20px;background:#e6f4ee;color:#1a7a45;font-weight:600;white-space:nowrap}
+.j-progress{height:10px;background:var(--sf2);border-radius:20px;margin-bottom:16px;overflow:hidden}
+.j-progress-bar{height:100%;background:#1a7a45;border-radius:20px;min-width:0;transition:width .3s}
+.j-section-title{font-size:13px;font-weight:700;margin-bottom:8px}
+.j-section-title.done{color:#1a7a45}
+.j-section-title.doing{color:#1a4a7a}
+.j-task-list{list-style:none;padding:0;margin:0 0 14px}
+.j-task-list li{padding:6px 0;font-size:13px;color:var(--text)}
+.j-block-alert{background:#fff8f8;border-radius:12px;padding:12px;margin-bottom:12px;color:var(--danger);border:1px solid #fde8e8}
+.j-block-title{font-weight:700;margin-bottom:6px;font-size:13px}
+.j-block-task{font-weight:600;margin-bottom:4px;font-size:13px}
+.j-block-reason{font-size:12px;color:var(--danger);opacity:.9;margin-bottom:8px}
+.j-tomorrow-box{background:var(--sf2);border-radius:12px;padding:12px}
+.j-tomorrow-title{font-weight:700;margin-bottom:8px;font-size:13px;color:var(--text)}
+@media (max-width:720px){
+  .j-dash-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 .jday-hdr{font-size:13px;font-weight:700;color:var(--text);padding:10px 4px 8px;border-bottom:2px solid var(--border);margin-bottom:10px}
 .jvbtns{display:flex;gap:3px}
 .jvbtn{padding:3px 8px;border-radius:12px;border:1px solid var(--border);background:var(--sf2);font-size:10px;cursor:pointer;color:var(--t2);white-space:nowrap}
@@ -536,11 +567,7 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
       <div class="jpage-single">
         <div class="jpage-toolbar">
           <h3>墨日誌小天地</h3>
-          <div class="jvbtns" id="journal-page-tabs">
-            <button class="jvbtn active" onclick="setJournalView('date',this)">依日期</button>
-            <button class="jvbtn" onclick="setJournalView('person',this)">依人員</button>
-            <button class="jvbtn" onclick="setJournalView('block',this)">卡關</button>
-          </div>
+          <span class="j-today-label" id="journal-today-label"></span>
           <button class="bjlog" onclick="openDailyLog()">＋ 填寫今日日誌</button>
         </div>
         <div class="jpage-feed" id="journal-page-list">
@@ -1979,7 +2006,6 @@ var membersData = [];
 var membersMap = {};
 var currentTaskId = null;
 var journalViewDate = new Date(); journalViewDate.setHours(0,0,0,0);
-var journalViewMode = 'date';
 var dailyLogDate = new Date(); dailyLogDate.setHours(0,0,0,0);
 var dailyLogProjFilter = '';
 var dailyLogContentEdited = false;
@@ -3888,66 +3914,167 @@ function renderJournalFeedList(recs, opts, layout) {
   return '<div class="' + (layout === 'stack' ? 'jfeed-stack' : 'jfeed-cards') + '">' + html + '</div>';
 }
 
-function renderJournalHtml(mode, area) {
-  if (!area) return;
-  if (mode === 'block') {
-    renderJournalBlockView(area);
-    return;
-  }
-  var items = getJournalItemsInRange(90);
-  if (!items.length) {
-    area.innerHTML = '<div style="padding:12px;color:var(--t3);font-size:12px">近 90 天尚無日誌</div>';
-    return;
-  }
+function getTodayStartMs() {
+  var d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
 
-  if (mode === 'person') {
-    var byPerson = {};
-    items.forEach(function(rec) {
-      var author = journalPersonName(rec) || '未指定';
-      if (!byPerson[author]) byPerson[author] = [];
-      byPerson[author].push(rec);
-    });
-    var names = Object.keys(byPerson).sort(function(a, b) { return a.localeCompare(b, 'zh-Hant'); });
-    var html = '';
-    names.forEach(function(name) {
-      var recs = byPerson[name].sort(function(a, b) { return (journalTs(b) || 0) - (journalTs(a) || 0); });
-      html += '<div class="jfeed-group">';
-      html += '<div class="jfeed-hdr"><span class="av ' + avatarClass(name) + '">' + personInitial(name) + '</span>' + escHtml(name) + '<span class="jfeed-count">' + recs.length + ' 筆</span></div>';
-      html += renderJournalFeedList(recs, { showAuthor: false, showDate: true }, 'stack');
-      html += '</div>';
-    });
-    area.innerHTML = html;
-    return;
-  }
-
-  var byDay = {};
-  items.forEach(function(rec) {
+function getTodayJournalEntries() {
+  var start = getTodayStartMs();
+  var end = start + 86400000;
+  return journalData.filter(function(rec) {
     var ts = journalTs(rec);
-    var d = new Date(ts);
-    d.setHours(0, 0, 0, 0);
-    var key = d.getTime();
-    if (!byDay[key]) byDay[key] = [];
-    byDay[key].push(rec);
+    return ts && ts >= start && ts < end;
   });
-  var dayKeys = Object.keys(byDay).map(Number).sort(function(a, b) { return b - a; });
-  var html2 = '';
-  dayKeys.forEach(function(dayTs) {
-    var d = new Date(dayTs);
-    var recs = byDay[dayTs].sort(function(a, b) {
-      return (journalPersonName(a) || '').localeCompare(journalPersonName(b) || '', 'zh-Hant');
+}
+
+function collectJournalPersonData(rec, personName) {
+  if (!rec) {
+    return {
+      name: personName,
+      proj: '',
+      done: [], doing: [], blocks: [], tomorrow: [],
+      doneCount: 0, total: 0, pct: 0,
+      journalRecId: null,
+      empty: true
+    };
+  }
+  var reasonMap = parseBlockReasons(rec);
+  function mapTasks(fieldKey) {
+    return getLinkIds(rec.fields[fieldKey]).map(function(id) {
+      var ctx = getTaskContext(id);
+      return { id: id, name: ctx ? (ctx.f['任務名稱'] || '任務') : '任務' };
     });
-    html2 += '<div class="jfeed-group">';
-    html2 += '<div class="jfeed-hdr">' + (d.getFullYear()) + '/' + (d.getMonth()+1) + '/' + d.getDate() + '（' + weekdayLabel(d) + '）<span class="jfeed-count">' + recs.length + ' 筆</span></div>';
-    html2 += renderJournalFeedList(recs, { showAuthor: true, showDate: false }, 'cards');
-    html2 += '</div>';
+  }
+  var done = mapTasks('已完成今日任務');
+  var doing = mapTasks('進行中任務');
+  var tomorrow = mapTasks('明日預計任務');
+  var blocks = getLinkIds(rec.fields['卡關任務']).map(function(id) {
+    var ctx = getTaskContext(id);
+    return {
+      id: id,
+      name: ctx ? (ctx.f['任務名稱'] || '任務') : '任務',
+      reason: reasonMap.byId[id] || reasonMap.legacy || '',
+      journalRecId: rec.record_id
+    };
   });
-  area.innerHTML = html2;
+  var total = done.length + doing.length + blocks.length + tomorrow.length;
+  var pct = total ? Math.round(done.length / total * 100) : 0;
+  var proj = journalLinkText(rec, ['所屬專案', '標案名稱', '所屬標案']) || '';
+  return {
+    name: personName,
+    proj: proj,
+    done: done,
+    doing: doing,
+    blocks: blocks,
+    tomorrow: tomorrow,
+    doneCount: done.length,
+    total: total,
+    pct: pct,
+    journalRecId: rec.record_id,
+    empty: !total
+  };
+}
+
+function renderJournalPersonCard(p) {
+  var html = '<div class="j-person-card">';
+  html += '<div class="j-person-hdr">';
+  html += '<div><div class="j-person-name">' + escHtml(p.name) + '</div>';
+  if (p.proj) html += '<div class="j-person-sub">' + escHtml(p.proj) + '</div>';
+  else if (p.empty) html += '<div class="j-person-sub">今日尚未填寫日誌</div>';
+  html += '</div>';
+  html += '<span class="j-person-badge">完成率 ' + p.pct + '%</span></div>';
+  html += '<div class="j-progress"><div class="j-progress-bar" style="width:' + p.pct + '%"></div></div>';
+
+  if (p.done.length) {
+    html += '<div class="j-section-title done">✓ 已完成</div><ul class="j-task-list">';
+    p.done.forEach(function(t) { html += '<li>' + escHtml(t.name) + '</li>'; });
+    html += '</ul>';
+  }
+  if (p.doing.length) {
+    html += '<div class="j-section-title doing">🔄 進行中</div><ul class="j-task-list">';
+    p.doing.forEach(function(t) { html += '<li>' + escHtml(t.name) + '</li>'; });
+    html += '</ul>';
+  }
+  if (p.blocks.length) {
+    p.blocks.forEach(function(b) {
+      html += '<div class="j-block-alert">';
+      html += '<div class="j-block-title">🚨 卡關事項</div>';
+      html += '<div class="j-block-task">' + escHtml(b.name) + '</div>';
+      if (b.reason) html += '<div class="j-block-reason">' + escHtml(b.reason) + '</div>';
+      html += '<div class="jc-block-actions" style="margin-top:0;padding-top:0;border-top:none">';
+      html += '<select class="jc-block-status"><option value="">調整狀態…</option>';
+      html += '<option value="doing">改為進行中</option><option value="done">改為完成</option></select>';
+      html += '<button type="button" class="jc-block-btn" data-task-id="' + escAttr(b.id) + '" data-journal-id="' + escAttr(b.journalRecId) + '" onclick="applyBlockStatusChange(this)">確認</button>';
+      html += '</div></div>';
+    });
+  }
+  if (p.tomorrow.length) {
+    html += '<div class="j-tomorrow-box"><div class="j-tomorrow-title">📅 明日計畫</div><ul class="j-task-list" style="margin-bottom:0">';
+    p.tomorrow.forEach(function(t) { html += '<li>' + escHtml(t.name) + '</li>'; });
+    html += '</ul></div>';
+  }
+  if (p.empty && !p.blocks.length && !p.tomorrow.length && !p.doing.length && !p.done.length) {
+    html += '<div class="j-empty-note">點右上角「填寫今日日誌」開始回報</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderJournalDashboard(area) {
+  if (!area) return;
+  var today = new Date();
+  var label = document.getElementById('journal-today-label');
+  if (label) label.textContent = '今日 ' + (today.getMonth() + 1) + '/' + today.getDate() + '（' + weekdayLabel(today) + '）';
+
+  var todayStart = getTodayStartMs();
+  var todayEntries = getTodayJournalEntries();
+  var kpi = { done: 0, doing: 0, block: 0, tomorrow: 0 };
+  todayEntries.forEach(function(rec) {
+    kpi.done += getLinkIds(rec.fields['已完成今日任務']).length;
+    kpi.doing += getLinkIds(rec.fields['進行中任務']).length;
+    kpi.block += getLinkIds(rec.fields['卡關任務']).length;
+    kpi.tomorrow += getLinkIds(rec.fields['明日預計任務']).length;
+  });
+
+  var names = getMemberNames();
+  if (!names.length) {
+    var nameSet = {};
+    todayEntries.forEach(function(rec) {
+      var n = journalPersonName(rec);
+      if (n) nameSet[n] = 1;
+    });
+    names = Object.keys(nameSet);
+  }
+  if (!names.length) names = ['（未指定）'];
+
+  var persons = names.map(function(name) {
+    var rec = findDailyJournalRecord(todayStart, name);
+    return collectJournalPersonData(rec, name);
+  }).sort(function(a, b) {
+    if (a.empty !== b.empty) return a.empty ? 1 : -1;
+    return a.name.localeCompare(b.name, 'zh-Hant');
+  });
+
+  var html = '<div class="j-dash-kpi">';
+  html += '<div class="j-kpi-card j-kpi-done"><div class="j-kpi-label">完成</div><div class="j-kpi-val">' + kpi.done + '</div></div>';
+  html += '<div class="j-kpi-card j-kpi-doing"><div class="j-kpi-label">進行中</div><div class="j-kpi-val">' + kpi.doing + '</div></div>';
+  html += '<div class="j-kpi-card j-kpi-block"><div class="j-kpi-label">卡關</div><div class="j-kpi-val">' + kpi.block + '</div></div>';
+  html += '<div class="j-kpi-card j-kpi-tomorrow"><div class="j-kpi-label">明日待辦</div><div class="j-kpi-val">' + kpi.tomorrow + '</div></div>';
+  html += '</div>';
+
+  html += '<div class="j-person-grid">';
+  persons.forEach(function(p) { html += renderJournalPersonCard(p); });
+  html += '</div>';
+
+  area.innerHTML = html;
 }
 
 function renderJournalPage() {
   var area = document.getElementById('journal-page-list');
   if (!area) return;
-  renderJournalHtml(journalViewMode, area);
+  renderJournalDashboard(area);
 }
 
 function savePaymentRecord(data) {
