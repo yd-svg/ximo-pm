@@ -201,11 +201,8 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .j-kpi-tomorrow .j-kpi-val{color:var(--warn)}
 .j-person-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px}
 .j-person-section{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.j-person-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.j-person-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}
 .j-person-name{font-size:18px;font-weight:700;margin:0}
-.j-person-badge{font-size:12px;padding:6px 10px;border-radius:20px;background:#e6f4ee;color:#1a7a45;font-weight:600;white-space:nowrap}
-.j-progress{height:8px;background:var(--sf2);border-radius:20px;margin-bottom:16px;overflow:hidden}
-.j-progress-bar{height:100%;background:#1a7a45;border-radius:20px;min-width:0;transition:width .3s}
 .j-proj-stack{display:flex;flex-direction:column;gap:14px}
 .j-proj-card{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff}
 .j-proj-card-hdr{padding:10px 14px;font-size:14px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border);background:var(--sf2)}
@@ -4742,7 +4739,7 @@ function renderJournalDashboard(area) {
   html += '<div class="j-kpi-card j-kpi-done"><div class="j-kpi-label">完成</div><div class="j-kpi-val">' + kpi.done + '</div></div>';
   html += '<div class="j-kpi-card j-kpi-doing"><div class="j-kpi-label">進行中</div><div class="j-kpi-val">' + kpi.doing + '</div></div>';
   html += '<div class="j-kpi-card j-kpi-block"><div class="j-kpi-label">需要處理</div><div class="j-kpi-val">' + kpi.block + '</div></div>';
-  html += '<div class="j-kpi-card j-kpi-tomorrow"><div class="j-kpi-label">下一步</div><div class="j-kpi-val">' + kpi.tomorrow + '</div></div>';
+  html += '<div class="j-kpi-card j-kpi-tomorrow"><div class="j-kpi-label">明日預計任務</div><div class="j-kpi-val">' + kpi.tomorrow + '</div></div>';
   html += '</div>';
 
   html += '<div class="j-person-grid">';
