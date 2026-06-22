@@ -555,7 +555,7 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
       <div class="dc"><div class="dch"><h3>付款申請單</h3><span style="font-size:11px;color:var(--t3);margin-left:8px">填寫後確認資料列印</span><span id="pay-user-label" style="font-size:11px;margin-left:auto;color:var(--t2)"></span></div>
         <div class="pfw">
           <div>
-            <div class="fg"><label>申請人</label><input type="text" id="p-applicant" readonly placeholder="Lark 登入後自動帶入" style="background:var(--sf2)"></div>
+            <div class="fg"><label>申請人</label><input type="text" id="p-applicant" placeholder="Lark 登入自動帶入，或手動填寫"></div>
             <div class="fg"><label>申請部門</label><input type="text" id="p-dept" value="璽墨"></div>
             <div class="fg"><label>申請日期</label><input type="date" id="p-date"></div>
             <div class="fg"><label>支付對象</label><input type="text" id="p-payee" placeholder="OOO"></div>
@@ -578,7 +578,6 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
             <div class="fg"><label>事由</label><input type="text" id="p-reason" placeholder="填寫付款事由"></div>
             <div class="fg"><label>備註</label><input type="text" id="p-remark" placeholder="備註說明"></div>
             <div class="fg"><label>付款總金額</label><input type="text" id="p-total" placeholder="NT$0" oninput="updatePayUpper()"><div class="p-upper" id="p-upper"></div></div>
-            <div class="fg"><label>通知對象</label><select id="p-notify"><option value="會計">會計</option><option value="主PM">主PM</option></select></div>
             <div class="bss">
               <button class="bsub" onclick="prevPay()">確認資料預覽</button>
             </div>
@@ -725,7 +724,8 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
     <div class="ppb"><iframe id="prev-iframe" title="付款申請單預覽"></iframe></div>
     <div class="ppf">
       <button class="bcan" onclick="cl('pp-prev')">返回修改</button>
-      <button class="bpri" onclick="doPrint()">🖨 確認列印</button>
+      <button class="bsm" onclick="window.open(buildPayPrintUrl({print:true}),'_blank')">新分頁列印</button>
+      <button class="bpri" onclick="doPrint()">🖨 確認列印並存檔</button>
     </div>
   </div>
 </div>
@@ -1757,40 +1757,40 @@ function prevPay() {
   op('pp-prev');
 }
 
+function triggerPaymentPrint() {
+  var printUrl = buildPayPrintUrl({ embed: true, print: true });
+  var iframe = document.getElementById('prev-iframe');
+  if (iframe) {
+    iframe.src = printUrl;
+    setTimeout(function() {
+      try {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        }
+      } catch (e) {
+        window.open(buildPayPrintUrl({ print: true }), '_blank');
+      }
+    }, 500);
+    return;
+  }
+  window.open(buildPayPrintUrl({ print: true }), '_blank');
+}
+
 function doPrint() {
   var data = collectPaymentFields();
   if (!data.total) { alert('請填寫付款總金額'); return; }
   if (!data.payee) { alert('請填寫支付對象'); return; }
-  if (!data.applicant) {
-    alert('尚未辨識申請人，請先 Lark 登入後再列印存檔');
-    return;
-  }
+  if (!data.applicant) data.applicant = '未指定';
+
+  triggerPaymentPrint();
 
   savePaymentRecord(data).then(function() {
-    var iframe = document.getElementById('prev-iframe');
-    var printed = false;
-    if (iframe && iframe.contentWindow) {
-      try {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        printed = true;
-      } catch (e) {}
-    }
-    if (!printed) {
-      window.open(buildPayPrintUrl({ print: true }), '_blank', 'width=900,height=800');
-    }
-    var printPath = buildPayPrintUrl({ embed: true }).replace(/^\//, '');
-    return sendPaymentNotify(data, printPath);
-  }).then(function(notifyRes) {
     cl('pp-prev');
-    if (notifyRes && notifyRes.notify && notifyRes.notify.skipped) {
-      alert('已列印並存檔（通知未設定：請在 Vercel 設定 LARK_WEBHOOK_URL）');
-    } else {
-      alert('已列印、存檔並寄送通知！');
-    }
+    alert('已列印並存檔至多維表格！');
   }).catch(function(err) {
     console.error(err);
-    alert('操作失敗：' + (err.message || '請稍後再試'));
+    alert('已開啟列印，但存檔失敗：' + (err.message || '請稍後再試'));
   });
 }
 
@@ -4780,22 +4780,6 @@ function savePaymentRecord(data) {
   });
 }
 
-function sendPaymentNotify(data, printPath) {
-  return fetch(API + '?action=notify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      dept: data.dept,
-      payee: data.payee,
-      applicant: data.applicant,
-      reason: data.reason,
-      amount: data.amountDisplay,
-      notifyTo: data.notifyTo || '會計',
-      printPath: printPath
-    })
-  }).then(function(r) { return r.json(); });
-}
-
 // ── 設計任務單 ──
 function renderDesigns() {
   var area = document.getElementById('design-area');
@@ -5920,8 +5904,7 @@ function collectPaymentFields() {
     nature: nats.join('、'),
     natureList: nats,
     applicant: applicant,
-    amountDisplay: totalNum ? 'NT$' + parseInt(totalNum,10).toLocaleString() : '',
-    notifyTo: (document.getElementById('p-notify') && document.getElementById('p-notify').value) || '會計'
+    amountDisplay: totalNum ? 'NT$' + parseInt(totalNum,10).toLocaleString() : ''
   };
 }
 

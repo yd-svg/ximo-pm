@@ -244,7 +244,7 @@ applyEmbedMode();
 const p = new URLSearchParams(window.location.search);
 if (p.get('print') === '1') {
   window.addEventListener('load', function() {
-    setTimeout(function() { window.focus(); window.print(); }, 400);
+    setTimeout(function() { window.focus(); window.print(); }, 800);
   });
 }
 </script>
