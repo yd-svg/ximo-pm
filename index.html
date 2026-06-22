@@ -4318,8 +4318,12 @@ function renderBlockTaskCard(item) {
 }
 
 function applyBlockStatusChange(btn) {
-  var card = btn.closest('.jc-block-item');
+  var card = btn.closest('.jc-block-item') || btn.closest('.j-block-alert');
   var sel = card ? card.querySelector('.jc-block-status') : null;
+  if (!sel) {
+    var actions = btn.closest('.jc-block-actions');
+    sel = actions ? actions.querySelector('.jc-block-status') : null;
+  }
   var newCat = sel ? sel.value : '';
   if (!newCat) { alert('請選擇要調整的狀態'); return; }
   resolveBlockedTask(btn.dataset.taskId, btn.dataset.journalId, newCat, btn);
