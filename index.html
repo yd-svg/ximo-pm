@@ -109,9 +109,12 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .ftag{padding:2px 7px;border-radius:20px;font-size:10px;cursor:pointer;border:1px solid var(--border);white-space:nowrap;color:var(--t2);background:var(--sf2);transition:all .15s;flex-shrink:0}
 
 /* C content */
-#content{flex:1;overflow-y:auto;background:var(--bg);border-radius:var(--r);padding:10px}
+#content{flex:1;min-height:0;overflow-y:auto;background:var(--bg);border-radius:var(--r);padding:10px;-webkit-overflow-scrolling:touch}
 .page{display:none}
 .page.active{display:block}
+#pg-s.page.active{display:flex;flex-direction:column;min-height:0;height:100%}
+#pg-s .gctl{flex-shrink:0}
+#gantt-area{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 
 /* E区 - 右側待辦提醒 */
 .eh{height:auto;min-height:var(--th);padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -308,7 +311,8 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .grl:last-child{border-bottom:none}
 .grn{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .grm{font-size:9px;color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gsw{flex:1;overflow-x:auto;overflow-y:hidden;min-width:0}
+.gsw{flex:1;overflow-x:auto;overflow-y:hidden;min-width:0;overscroll-behavior-x:contain;touch-action:pan-x;-webkit-overflow-scrolling:touch}
+.gf{touch-action:pan-y}
 .gtc{display:inline-block}
 .gmr{display:flex;height:26px;border-bottom:1px solid var(--border);background:var(--sf2)}
 .gmc{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--t2);border-right:1px solid var(--border);flex-shrink:0}
@@ -762,16 +766,17 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
   <div class="fg"><label>合約開始日</label><input type="date" id="ep-start"></div>
   <div class="fg"><label>合約結束日</label><input type="date" id="ep-end"></div>
   <div class="fg"><label>合約金額</label><input type="text" id="ep-amount" placeholder="NT$0"></div>
-  <div class="fg"><label>Wiki 封存位置</label><input type="url" id="ep-wiki-folder" placeholder="https://.../wiki/...（知識庫首頁或目錄頁連結）">
+  <div class="fg"><label>Wiki 封存位置</label><input type="url" id="ep-wiki-folder" placeholder="https://ajpfe1xdus5o.jp.larksuite.com/wiki/...（須含 https://）">
     <div class="fg-hint" style="font-size:10px;color:var(--t3);margin-top:4px">可貼知識庫首頁（wiki/space/…）或任一目錄頁連結。封存成功後會出現在該知識庫內（不是「與我分享」雲端文件）</div>
   </div>
 </div><div class="ppf"><button class="bcan" onclick="cl('pp-edit-proj')">取消</button><button class="bpri" onclick="saveEditProject()">儲存</button></div></div></div>
 
 <!-- 標案封存至知識庫 -->
 <div class="po" id="pp-archive-proj"><div class="pp"><div class="pph"><h3>封存標案至知識庫</h3><button class="ppc" onclick="cancelArchiveProject()">✕</button></div><div class="ppb">
-  <p style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:12px">若已在標案設定「Wiki 封存位置」，會自動帶入。亦可手動修改。系統會從範本複製多維表格並寫入此標案資料，封存後標案將從前台隱藏。</p>
+  <p style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:12px">若已在標案設定「Wiki 封存位置」，會自動帶入。亦可手動修改。系統會從範本複製多維表格並寫入此標案資料，封存後標案將從前台隱藏。<br><span style="font-size:11px;color:var(--t3)">請先完成「Lark 登入」；知識庫成員設定無法加入自建應用，封存會使用您個人的知識庫編輯權限。</span></p>
   <div id="ap-export-preview" class="ap-export-preview">載入中…</div>
-  <div class="fg"><label>知識庫存放位置連結</label><input type="url" id="ap-wiki-url" placeholder="https://.../wiki/...（知識庫首頁或目錄頁）" oninput="refreshArchivePreview()"></div>
+  <div class="fg"><label>知識庫存放位置連結</label><input type="url" id="ap-wiki-url" placeholder="https://ajpfe1xdus5o.jp.larksuite.com/wiki/space/7650032628065668632" oninput="refreshArchivePreview()">
+    <div style="font-size:10px;color:var(--t3);margin-top:4px;line-height:1.5">須為 wiki/space/… 或 wiki/節點ID，不能是 /base/ 多維表格連結</div></div>
   <div id="ap-proj-name" style="font-size:11px;color:var(--t3)"></div>
 </div><div class="ppf"><button class="bcan" onclick="cancelArchiveProject()">取消</button><button class="bpri" onclick="confirmArchiveProject()">確認封存</button></div></div></div>
 
@@ -1682,7 +1687,7 @@ function saveProjectImport() {
   if (amount) fields['合約金額'] = amount;
   var wikiFolder = (document.getElementById('np-wiki-folder').value || '').trim();
   if (!wikiFolder) wikiFolder = (document.getElementById('np-wiki-folder-manual').value || '').trim();
-  if (wikiFolder) fields['Wiki存放位置'] = wikiFolder;
+  if (wikiFolder) setWikiFolderField(fields, wikiFolder);
 
   var items = parsedProjWorkItems.filter(function(it) { return it.name && it.name.trim(); });
   var startTs = start ? dateInputToTs(start) : Date.now();
@@ -1895,29 +1900,34 @@ function getRange(){
   }
 }
 
+function applyGanttFit(key, proj, vs, ve, total) {
+  requestAnimationFrame(function() {
+    var gb = document.getElementById('gb-' + key);
+    var sw2 = document.getElementById('gsw-' + key);
+    if (!gb || !sw2) return;
+    if (vMode === 'week') {
+      gb.classList.add('week-fit');
+      var avail = sw2.clientWidth;
+      if (avail < total * 48) return;
+      var stretchCW = Math.max(56, Math.floor(avail / total));
+      if (stretchCW !== CW) paintGantt(key, proj, vs, ve, total, stretchCW);
+      return;
+    }
+    gb.classList.remove('week-fit');
+    if (sw2.scrollWidth <= sw2.clientWidth + 2) gb.classList.add('week-fit');
+  });
+}
+
 function buildG(key){
   var proj=PDATA[key];
+  if(!proj) return;
   var r=getRange(),vs=r.s,ve=r.e;
   var total=dif(vs,ve)+1;
+  if(total<=0) return;
   var estW=vMode==='week'?estimateWeekContainerWidth():0;
   CW=getCellWidth(total,estW);
   paintGantt(key,proj,vs,ve,total,CW);
-
-  if(vMode==='week'){
-    var gb=document.getElementById('gb-'+key);
-    if(gb)gb.classList.add('week-fit');
-    requestAnimationFrame(function(){
-      var sw2=document.getElementById('gsw-'+key);
-      if(!sw2)return;
-      var avail=sw2.clientWidth;
-      if(avail<total*48)return;
-      var stretchCW=Math.max(56,Math.floor(avail/total));
-      if(stretchCW!==CW)paintGantt(key,proj,vs,ve,total,stretchCW);
-    });
-  }else{
-    var gb2=document.getElementById('gb-'+key);
-    if(gb2)gb2.classList.remove('week-fit');
-  }
+  applyGanttFit(key, proj, vs, ve, total);
 }
 
 function paintGantt(key,proj,vs,ve,total,cw){
@@ -1927,10 +1937,12 @@ function paintGantt(key,proj,vs,ve,total,cw){
 
   // months
   var mHTML='',mc=new Date(vs.getFullYear(),vs.getMonth(),1);
-  while(mc<=ve){
+  var monthGuard=0;
+  while(mc<=ve&&monthGuard<24){
+    monthGuard++;
     var ms=new Date(Math.max(mc,vs)),me2=new Date(Math.min(new Date(mc.getFullYear(),mc.getMonth()+1,0),ve));
     var days=dif(ms,me2)+1;
-    mHTML+='<div class="gmc" style="width:'+(days*CW)+'px">'+(mc.getMonth()+1)+'月</div>';
+    if(days>0) mHTML+='<div class="gmc" style="width:'+(days*CW)+'px">'+(mc.getMonth()+1)+'月</div>';
     mc.setMonth(mc.getMonth()+1);
   }
 
@@ -1950,7 +1962,7 @@ function paintGantt(key,proj,vs,ve,total,cw){
   var fixH='<div class="gfh"><span>工作項目</span></div>';
   proj.rows.forEach(function(row){
     var rowH = Math.max(40, row.bars.length * 20 + 12);
-    fixH+='<div class="grl" style="height:'+rowH+'px"><div class="grn">'+row.n+'</div><div class="grm">'+row.m+'</div></div>';
+    fixH+='<div class="grl" style="height:'+rowH+'px"><div class="grn">'+escHtml(row.n)+'</div><div class="grm">'+escHtml(row.m)+'</div></div>';
   });
 
   // timeline
@@ -1969,22 +1981,29 @@ function paintGantt(key,proj,vs,ve,total,cw){
       var clickAttr = bar.id ? ' onclick="openTaskDetail(\'' + bar.id + '\')"' : '';
       var overdueClass = bar.overdue ? ' overdue' : '';
       var bgStyle = bar.overdue ? '' : 'background:' + barColor + ';';
-      bH+='<div class="gbar'+overdueClass+'" style="left:'+ax+'px;width:'+aw+'px;top:'+top+'px;transform:none;height:16px;'+bgStyle+'opacity:'+bar.o+'"'+clickAttr+' title="'+escAttr(bar.l)+'">'+bar.l+'</div>';
+      bH+='<div class="gbar'+overdueClass+'" style="left:'+ax+'px;width:'+aw+'px;top:'+top+'px;transform:none;height:16px;'+bgStyle+'opacity:'+bar.o+'"'+clickAttr+' title="'+escAttr(bar.l)+'">'+escHtml(bar.l)+'</div>';
     });
     tmH+='<div class="gtr" style="width:'+tw+'px;height:'+rowH+'px">'+bH+'</div>';
   });
 
   var gb=document.getElementById('gb-'+key);
+  if(!gb) return;
   var gtcW=vMode==='week'?'width:100%;min-width:'+tw+'px':'width:'+tw+'px';
   gb.innerHTML='<div class="gf">'+fixH+'</div><div class="gsw" id="gsw-'+key+'"><div class="gtc" style="'+gtcW+'">'+tmH+'</div></div>';
 
   var sw2=document.getElementById('gsw-'+key);
+  if(!sw2) return;
   var rng=document.getElementById('rng-'+key);
   sw2.onscroll=function(){
+    if(!rng) return;
     var max=sw2.scrollWidth-sw2.clientWidth;
-    if(max>0)rng.value=(sw2.scrollLeft/max)*100;
+    if(max>0) rng.value=(sw2.scrollLeft/max)*100;
   };
-  if(toff>5)sw2.scrollLeft=Math.max(0,tx-200);
+  if(toff>0){
+    var maxScroll=Math.max(0,sw2.scrollWidth-sw2.clientWidth);
+    var lead=vMode==='quarter'?Math.floor(sw2.clientWidth*0.25):200;
+    sw2.scrollLeft=Math.min(maxScroll,Math.max(0,tx-lead));
+  }
 }
 
 function updLabel(){
@@ -2011,7 +2030,9 @@ function goToday(){
     var r=getRange(),total=dif(r.s,r.e)+1;
     var cw=vMode==='week'&&el.clientWidth?Math.max(56,Math.floor(el.clientWidth/total)):getCellWidth(total,0);
     var tx2=dif(r.s,TODAY)*cw;
-    el.scrollLeft=Math.max(0,tx2-200);
+    var lead=vMode==='quarter'?Math.floor(el.clientWidth*0.25):200;
+    var maxScroll=Math.max(0,el.scrollWidth-el.clientWidth);
+    el.scrollLeft=Math.min(maxScroll,Math.max(0,tx2-lead));
   });
 }
 function scG(k,d){var el=document.getElementById('gsw-'+k);if(el)el.scrollLeft+=d;}
@@ -2030,7 +2051,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260622b';
+var APP_BUILD = '20260615g';
 var API = '/api/lark';
 
 function apiUrl(pathAndQuery) {
@@ -2258,6 +2279,13 @@ function getPersonOpenId(field) {
   if (Array.isArray(field) && field[0]) return field[0].id || field[0].open_id || '';
   return '';
 }
+function getUserAccessToken() {
+  var u = getCurrentLoginUser();
+  if (!u || !u.accessToken) return '';
+  var exp = Number(u.tokenExpiresAt || 0);
+  if (exp && Date.now() > exp - 60000) return '';
+  return u.accessToken;
+}
 function getCurrentLoginUser() {
   if (currentLoginUser) return currentLoginUser;
   try {
@@ -2299,6 +2327,9 @@ function applyLoginUserToForms() {
 }
 function storeLoginUser(user) {
   if (!user) return;
+  if (user.accessToken) {
+    user.tokenExpiresAt = Date.now() + (Number(user.expiresIn) || 7200) * 1000;
+  }
   currentLoginUser = user;
   try { sessionStorage.setItem('ximo-login-user', JSON.stringify(user)); } catch (e) {}
   updateTodoLoginLabel();
@@ -2460,7 +2491,7 @@ function exchangeLarkAuthCode(appId, tt) {
     if (tt.requestAccess) {
       tt.requestAccess({
         appID: appId,
-        scopeList: [],
+        scopeList: ['wiki:wiki', 'wiki:node:read', 'bitable:app'],
         success: function(res) { onCode(res.code); },
         fail: function(err) {
           if (err && err.errno === 103) callRequestAuthCode();
@@ -2500,12 +2531,19 @@ function tryLarkClientAuth(appId) {
     return whenLarkReady(5000);
   }).then(function(tt) {
     if (!tt) return null;
-    return tryLarkGetUserInfo(tt);
-  }).then(function(user) {
-    if (user) return user;
-    return whenLarkReady(5000).then(function(tt) {
-      if (!tt) return null;
-      return exchangeLarkAuthCode(appId, tt);
+    return exchangeLarkAuthCode(appId, tt).then(function(tokenUser) {
+      if (tokenUser && tokenUser.accessToken) {
+        return tryLarkGetUserInfo(tt).then(function(infoUser) {
+          if (infoUser) {
+            if (!tokenUser.name) tokenUser.name = infoUser.name;
+            if (!tokenUser.openId) tokenUser.openId = infoUser.openId;
+            if (!tokenUser.userId) tokenUser.userId = infoUser.userId;
+          }
+          finalizeLoginUser(tokenUser);
+          return tokenUser;
+        });
+      }
+      return tryLarkGetUserInfo(tt);
     });
   });
 }
@@ -2518,12 +2556,13 @@ function startBrowserLarkLogin() {
     }
     return waitForLarkBridge(4000).then(function(inLark) {
       if (!inLark) return false;
-      return tryLarkClientAuth(cfg.appId).then(function(user) { return !!user; });
+      return tryLarkClientAuth(cfg.appId).then(function(user) { return user && user.accessToken; });
     }).then(function(loggedIn) {
       if (loggedIn) {
         updateTodoLoginLabel();
         applyLoginUserToForms();
         renderTeamPanel();
+        alert('Lark 登入成功，Wiki 授權已就緒，可進行封存。');
         return;
       }
       var redirect = getLoginRedirectUri();
@@ -2560,7 +2599,7 @@ function resolveLoginUser() {
       });
     }
     var cached = getCurrentLoginUser();
-    if (cached) {
+    if (cached && getUserAccessToken()) {
       loginUserReady = true;
       return Promise.resolve(cached);
     }
@@ -2593,9 +2632,11 @@ function updateTodoLoginLabel() {
   var el = document.getElementById('todo-user-label');
   if (!el) return;
   var u = getCurrentLoginUser();
+  var wikiOk = getUserAccessToken();
   if (u && (u.name || u.enName)) {
-    el.innerHTML = '登入：' + escHtml(u.name || u.enName);
-    el.className = 'todo-user-label ok';
+    var wikiTag = wikiOk ? ' · Wiki 授權已就緒' : ' · <span class="todo-login-warn">Wiki 未授權</span>';
+    el.innerHTML = '登入：' + escHtml(u.name || u.enName) + wikiTag;
+    el.className = wikiOk ? 'todo-user-label ok' : 'todo-user-label';
   } else {
     el.innerHTML = '<span class="todo-login-warn">尚未登入</span> · <button type="button" class="todo-login-link" onclick="startBrowserLarkLogin()">Lark 登入</button>';
     el.className = 'todo-user-label';
@@ -5066,6 +5107,30 @@ function isProjectVisible(rec) {
   return normalizeProjectStatus(rec.fields['狀態']) !== '封存';
 }
 
+function normalizeWikiInputUrl(raw) {
+  var s = String(raw || '').trim();
+  if (!s) return '';
+  if (s.charAt(0) === '{') {
+    try {
+      var o = JSON.parse(s);
+      if (o && o.link) s = String(o.link).trim();
+    } catch (e) {}
+  }
+  if (!/^https?:\/\//i.test(s)) {
+    if (/wiki\//i.test(s) || /larksuite\.com/i.test(s) || /feishu\.cn/i.test(s)) {
+      s = 'https://' + s.replace(/^\/+/, '');
+    }
+  }
+  return s;
+}
+
+function isWikiArchiveUrl(url) {
+  var s = normalizeWikiInputUrl(url);
+  if (!s) return false;
+  if (/\/base\//i.test(s)) return false;
+  return /\/wiki\/space\/[^/?#]+/i.test(s) || /\/wiki\/(?!space)[^/?#]+/i.test(s);
+}
+
 function getFieldUrlText(field) {
   if (!field) return '';
   if (typeof field === 'string') return field.trim();
@@ -5084,13 +5149,32 @@ function getProjectWikiUrl(f) {
   return getFieldUrlText(f['封存連結']) || getFieldUrlText(f['知識庫連結']);
 }
 
+function makeBitableUrlValue(url) {
+  if (!url) return '';
+  var u = String(url).trim();
+  if (!u) return '';
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  var text = u.replace(/^https?:\/\//, '');
+  if (text.length > 48) text = text.slice(0, 48) + '…';
+  return { link: u, text: text || u };
+}
+
+function setWikiFolderField(fields, url) {
+  if (!url) {
+    fields['Wiki存放位置'] = '';
+    return;
+  }
+  fields['Wiki存放位置'] = makeBitableUrlValue(url);
+  if (fields['Wiki連結'] !== undefined) fields['Wiki連結'] = makeBitableUrlValue(url);
+}
+
 function setProjectWikiUrlField(fields, url) {
   if (!url) return;
-  var text = url.replace(/^https?:\/\//, '');
-  if (text.length > 48) text = text.slice(0, 48) + '…';
-  var linkObj = { link: url, text: text || url };
+  var linkObj = makeBitableUrlValue(url);
   fields['知識庫連結'] = linkObj;
   fields['封存連結'] = url;
+  fields['Wiki存放位置'] = linkObj;
+  fields['Wiki連結'] = linkObj;
 }
 
 function onGanttProjStatusChange(projId, sel) {
@@ -5113,6 +5197,20 @@ function onGanttProjStatusChange(projId, sel) {
 
 function archiveErrorHint(errMsg) {
   var s = String(errMsg || '');
+  if (/尚未授權 wiki|needs_user_login|知識庫授權/i.test(s)) {
+    return '\n\n【原因】Lark 只辨識了您的姓名，未取得 wiki API 授權碼。'
+      + '\n【做法】點「Lark 登入」→ 同意授權 → 再封存。';
+  }
+  if (/掛入知識庫|wiki space permission|tenant needs read permission/i.test(s)) {
+    return '\n\n【失敗位置】不是寫入標案／任務資料，而是「把複製好的多維表格掛進知識庫」。'
+      + '\n【請依序檢查】'
+      + '\n1. Lark 開發者後台 → 權限管理：wiki:wiki、wiki:node:read、bitable:app 已開通並「發布」'
+      + '\n2. 在系統內點「Lark 登入」重新授權（用您個人權限，知識庫成員設定找不到應用是正常的）'
+      + '\n3. 若仍失敗：在目標知識庫手動建立範本多維表格，封存時貼該頁面的 wiki 連結（非 space 連結）';
+  }
+  if (/Wiki 封存位置須為|不是 \/base\/|知識庫存放位置連結無效/i.test(s)) {
+    return '\n\n【連結格式】請貼 wiki/space/… 或 wiki/節點ID，例如：\nhttps://ajpfe1xdus5o.jp.larksuite.com/wiki/space/7650032628065668632';
+  }
   if (/wiki:/i.test(s)) {
     return '\n\n【請在 Lark 開發者後台開通並發布】\n· wiki:wiki\n· wiki:node:read\n· bitable:app\n路徑：應用 → 權限管理 → 搜尋 wiki / bitable';
   }
@@ -5195,7 +5293,7 @@ function openArchiveProjectPopup(projId, sel) {
   var nameEl = document.getElementById('ap-proj-name');
   if (nameEl) nameEl.textContent = '標案：' + (rec.fields['標案名稱'] || '');
   var urlEl = document.getElementById('ap-wiki-url');
-  if (urlEl) urlEl.value = getProjectArchiveFolderUrl(rec.fields) || '';
+  if (urlEl) urlEl.value = normalizeWikiInputUrl(getProjectArchiveFolderUrl(rec.fields) || '');
   renderArchivePreview(projId);
   op('pp-archive-proj');
 }
@@ -5208,8 +5306,17 @@ function cancelArchiveProject() {
 
 function confirmArchiveProject() {
   if (!archivingProjId) return;
-  var url = (document.getElementById('ap-wiki-url').value || '').trim();
+  if (!getUserAccessToken() && !isWikiArchiveUrl(url)) {
+    alert('封存至知識庫需要 Lark wiki 授權，或請貼 wiki/space/… 空間連結。\n\n請點「確定」後完成 Lark 登入授權，再重新封存。');
+    startBrowserLarkLogin();
+    return;
+  }
+  var url = normalizeWikiInputUrl(document.getElementById('ap-wiki-url').value || '');
   if (!url) { alert('請貼上知識庫頁面連結'); return; }
+  if (!isWikiArchiveUrl(url)) {
+    alert('連結格式不正確。\n\n請貼知識庫連結，例如：\nhttps://ajpfe1xdus5o.jp.larksuite.com/wiki/space/7650032628065668632\n\n不能是 /base/ 多維表格連結。');
+    return;
+  }
   if (!/^https?:\/\//i.test(url)) { alert('請輸入完整的網址（需含 http:// 或 https://）'); return; }
   var rec = projectsData.find(function(p) { return p.record_id === archivingProjId; });
   var name = rec ? (rec.fields['標案名稱'] || '') : '';
@@ -5224,11 +5331,18 @@ function confirmArchiveProject() {
       fetch(API + '?action=archive-project', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: archivingProjId, wikiUrl: url })
+        body: JSON.stringify({
+          projectId: archivingProjId,
+          wikiUrl: url,
+          userAccessToken: getUserAccessToken()
+        })
       }).then(function(r) { return r.json(); }).then(function(res) {
         if (!res.ok || !res.copiedToWikiBase) {
           var errMsg = res.copyError || res.error || res.msg || '資料未寫入知識庫';
           var hint = archiveErrorHint(errMsg);
+          if (res.needsUserLogin || !getUserAccessToken()) {
+            hint += '\n\n【請先 Lark 登入】需授權 wiki:wiki、wiki:node:read，不能只靠 getUserInfo 身分辨識。';
+          }
           alert('封存未完成，標案仍保留於前台。\n\n' + errMsg + hint);
           return;
         }
@@ -5243,10 +5357,13 @@ function confirmArchiveProject() {
         cancelArchiveProject();
         if (oldFields) undoStack.push({ type: 'update', table: 'projects', recordId: savedProjId, data: oldFields });
         loadData();
-        showUndoToast('標案已封存');
-        var openUrl = res.wikiUrl || url;
         var msg = res.wikiNote || res.summary || '封存完成';
-        if (confirm(msg + '\n\n是否開啟知識庫頁面？')) {
+        if (!res.wikiPlaced && res.baseAppUrl) {
+          msg += '\n\n資料位置：' + res.baseAppUrl;
+        }
+        showUndoToast(res.wikiPlaced ? '標案已封存至知識庫' : '標案已封存（資料在雲端表格，請手動移入知識庫）');
+        var openUrl = res.wikiPlaced ? (res.wikiUrl || url) : (res.baseAppUrl || res.wikiUrl || url);
+        if (confirm(msg + '\n\n是否開啟資料頁面？')) {
           window.open(openUrl, '_blank', 'noopener');
         }
       }).catch(function(err) {
@@ -5617,7 +5734,7 @@ function saveEditProject() {
     fields['可用成本'] = Math.round(amount / 1.05 / 2);
   }
   var wikiFolder = (document.getElementById('ep-wiki-folder').value || '').trim();
-  fields['Wiki存放位置'] = wikiFolder || '';
+  setWikiFolderField(fields, wikiFolder);
   showConfirm({
     type: 'edit',
     title: '確認修改標案',
@@ -6065,7 +6182,7 @@ if (document.readyState === 'loading') {
   }
 })();
 window.addEventListener('resize', function() {
-  if (vMode === 'week' && projectsData.length) renderGanttFromData();
+  if (projectsData.length && (vMode === 'week' || vMode === 'month' || vMode === 'quarter')) renderGanttFromData();
 });
 </script>
 </body>
