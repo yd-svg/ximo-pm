@@ -1771,7 +1771,7 @@ function paintGantt(key,proj,vs,ve,total,cw){
       if(bx+bw<0||bx>tw)return;
       var ax=Math.max(0,bx),aw=Math.min(bw,tw-ax);
       var top = 4 + bi * 20;
-      var barColor = bar.c || proj.color;
+      var barColor = bar.design ? DESIGN_GANTT_COLOR : (bar.c || proj.color);
       var clickAttr = bar.id ? ' onclick="openTaskDetail(\'' + bar.id + '\')"' : '';
       bH+='<div class="gbar" style="left:'+ax+'px;width:'+aw+'px;top:'+top+'px;transform:none;height:16px;background:'+barColor+';opacity:'+bar.o+'"'+clickAttr+' title="'+escAttr(bar.l)+'">'+bar.l+'</div>';
     });
@@ -2657,13 +2657,6 @@ function getDesignBarRange(f) {
   return { start: start, end: end };
 }
 
-function designBarOpacity(status) {
-  if (!status) return 0.65;
-  if (status.indexOf('完成') >= 0) return 1;
-  if (status.indexOf('進行') >= 0) return 0.9;
-  return 0.65;
-}
-
 // ── 渲染甘特圖（使用真實資料）──
 function renderGanttFromData() {
   var ganttArea = document.getElementById('gantt-area');
@@ -2745,8 +2738,9 @@ function renderGanttFromData() {
           s: toDateStr(range.start),
           e: toDateStr(range.end),
           l: dName,
-          o: designBarOpacity(df['狀態']),
-          c: DESIGN_GANTT_COLOR
+          o: 0.92,
+          c: DESIGN_GANTT_COLOR,
+          design: true
         });
       });
 
