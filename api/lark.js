@@ -4,6 +4,18 @@ const APP_ID = (process.env.LARK_APP_ID || '').trim();
 const APP_SECRET = (process.env.LARK_APP_SECRET || '').trim();
 const APP_TOKEN = (process.env.LARK_APP_TOKEN || '').trim();
 const BASE_URL = 'https://open.larksuite.com/open-apis';
+
+/** OAuth 重定向 URL — 須與 Lark 開發者後台「安全設定 > 重定向 URL」完全一致 */
+function getCanonicalRedirectUri() {
+  const raw = (process.env.LARK_REDIRECT_URI || process.env.SITE_URL || 'https://ximo-pm.vercel.app').trim();
+  try {
+    const u = new URL(raw);
+    if (!u.pathname || u.pathname === '/') return u.origin;
+    return u.origin + u.pathname.replace(/\/$/, '');
+  } catch {
+    return raw.replace(/\/$/, '');
+  }
+}
  
 // 取得 tenant_access_token
 async function getToken() {
@@ -843,7 +855,8 @@ export default async function handler(req, res) {
 
   try {
     if (action === 'appid' && req.method === 'GET') {
-      return res.status(200).json({ appId: APP_ID });
+      const redirectUri = getCanonicalRedirectUri();
+      return res.status(200).json({ appId: APP_ID, redirectUri: redirectUri });
     }
 
     if (action === 'jssdk-config' && req.method === 'GET') {
@@ -855,9 +868,12 @@ export default async function handler(req, res) {
     }
 
     if (action === 'auth-url' && req.method === 'GET') {
-      const redirect = (req.query.redirect_uri || process.env.SITE_URL || '').trim();
-      if (!redirect) return res.status(400).json({ error: 'missing redirect_uri' });
-      return res.status(200).json({ url: buildAuthUrl(redirect), appId: APP_ID });
+      const redirect = getCanonicalRedirectUri();
+      return res.status(200).json({
+        url: buildAuthUrl(redirect),
+        appId: APP_ID,
+        redirectUri: redirect
+      });
     }
 
     if (action === 'login' && req.method === 'POST') {

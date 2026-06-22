@@ -2072,6 +2072,22 @@ var membersMap = {};
 var currentLoginUser = null;
 var loginUserReady = false;
 var loginResolving = null;
+var larkAppConfig = { appId: '', redirectUri: '' };
+
+function loadLarkAppConfig() {
+  return fetch(API + '?action=appid').then(function(r) { return r.json(); }).then(function(cfg) {
+    if (cfg.appId) larkAppConfig.appId = cfg.appId;
+    if (cfg.redirectUri) larkAppConfig.redirectUri = cfg.redirectUri;
+    return larkAppConfig;
+  }).catch(function() { return larkAppConfig; });
+}
+function getLoginRedirectUri() {
+  if (larkAppConfig.redirectUri) return larkAppConfig.redirectUri;
+  var origin = window.location.origin;
+  var path = window.location.pathname;
+  if (path === '/' || path === '/index.html') return origin;
+  return origin + path.replace(/\/$/, '');
+}
 var currentTaskId = null;
 var journalViewDate = new Date(); journalViewDate.setHours(0,0,0,0);
 var dailyLogDate = new Date(); dailyLogDate.setHours(0,0,0,0);
@@ -2259,7 +2275,7 @@ function finalizeLoginUser(user) {
 function exchangeLarkAuthCode(appId, tt) {
   return new Promise(function(resolve) {
     if (!tt) { resolve(null); return; }
-    var redirect = window.location.origin + window.location.pathname;
+    var redirect = getLoginRedirectUri();
     function onCode(code) {
       if (!code) { resolve(null); return; }
       loginWithCode(code, redirect).then(resolve).catch(function() {
@@ -2327,13 +2343,16 @@ function tryLarkClientAuth(appId) {
   });
 }
 function startBrowserLarkLogin() {
-  var redirect = window.location.origin + window.location.pathname;
-  fetch(API + '?action=auth-url&redirect_uri=' + encodeURIComponent(redirect))
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-      if (res.url) window.location.href = res.url;
-      else alert('無法取得 Lark 登入連結，請確認 Lark 應用已設定');
-    }).catch(function(err) { alert('登入失敗：' + err.message); });
+  loadLarkAppConfig().then(function() {
+    var redirect = getLoginRedirectUri();
+    fetch(API + '?action=auth-url')
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res.redirectUri) larkAppConfig.redirectUri = res.redirectUri;
+        if (res.url) window.location.href = res.url;
+        else alert('無法取得 Lark 登入連結。請在 Lark 開發者後台「安全設定 > 重定向 URL」加入：\n' + redirect);
+      }).catch(function(err) { alert('登入失敗：' + err.message); });
+  });
 }
 function resolveLoginUser() {
   if (loginUserReady && getCurrentLoginUser()) return Promise.resolve(getCurrentLoginUser());
@@ -2343,15 +2362,17 @@ function resolveLoginUser() {
     var params = new URLSearchParams(window.location.search);
     var code = params.get('code');
     if (code) {
-      var redirect = window.location.origin + window.location.pathname;
-      return loginWithCode(code, redirect).then(function(user) {
-        if (window.history.replaceState) window.history.replaceState({}, '', redirect);
-        loginUserReady = true;
-        return user;
-      }).catch(function(err) {
-        console.warn('Lark login', err);
-        loginUserReady = true;
-        return null;
+      return loadLarkAppConfig().then(function() {
+        var redirect = getLoginRedirectUri();
+        return loginWithCode(code, redirect).then(function(user) {
+          if (window.history.replaceState) window.history.replaceState({}, '', redirect);
+          loginUserReady = true;
+          return user;
+        }).catch(function(err) {
+          console.warn('Lark login', err);
+          loginUserReady = true;
+          return null;
+        });
       });
     }
     var cached = getCurrentLoginUser();
@@ -2359,7 +2380,7 @@ function resolveLoginUser() {
       loginUserReady = true;
       return Promise.resolve(cached);
     }
-    return fetch(API + '?action=appid').then(function(r) { return r.json(); }).then(function(cfg) {
+    return loadLarkAppConfig().then(function(cfg) {
       if (!cfg.appId) {
         loginUserReady = true;
         return null;
