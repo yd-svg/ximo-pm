@@ -129,6 +129,11 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .todo-card-title{font-size:12px;font-weight:700;color:var(--text);line-height:1.35}
 .todo-card-meta{font-size:10px;color:var(--t3);margin-top:4px;line-height:1.4}
 .todo-empty{font-size:11px;color:var(--t3);padding:2px 0 4px}
+.todo-user-label{font-size:10px;color:var(--t3);margin-top:2px;line-height:1.4}
+.todo-user-label.ok{color:var(--t2)}
+.todo-login-warn{color:var(--warn)}
+.todo-login-link{border:none;background:none;padding:0;font-size:10px;color:var(--c2);cursor:pointer;font-weight:600;text-decoration:underline}
+.todo-login-banner{font-size:11px;color:var(--t2);background:var(--sf2);border:1px solid var(--border);border-radius:var(--rs);padding:8px 10px;margin-bottom:10px;line-height:1.5}
 
 /* journal page */
 .jpage-single{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);display:flex;flex-direction:column;overflow:hidden;min-height:calc(100vh - var(--th) - 36px)}
@@ -601,7 +606,10 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 <!-- ══ 右側：待辦提醒 ══ -->
 <div id="rp">
   <div class="eh">
-    <h3>待辦提醒</h3>
+    <div>
+      <h3>待辦提醒</h3>
+      <div class="todo-user-label" id="todo-user-label"></div>
+    </div>
     <div class="todo-scope-toggle" id="todo-scope-toggle">
       <button type="button" class="todo-scope-btn active" data-scope="mine" onclick="setTodoScope('mine')">我的</button>
       <button type="button" class="todo-scope-btn" data-scope="all" onclick="setTodoScope('all')">全部</button>
@@ -768,6 +776,7 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
   <span id="undo-toast-msg">已刪除</span>
   <button class="undo-btn" onclick="undoLast()">↩ 復原</button>
 </div>
+<script src="https://sf1-lark-tos.larksuitecdn.com/obj/lark-static-sg/lark/h5sdk/h5-js-sdk-1.5.16.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -2038,6 +2047,8 @@ var designsData = [];
 var journalData = [];
 var membersData = [];
 var membersMap = {};
+var currentLoginUser = null;
+var loginUserReady = false;
 var currentTaskId = null;
 var journalViewDate = new Date(); journalViewDate.setHours(0,0,0,0);
 var dailyLogDate = new Date(); dailyLogDate.setHours(0,0,0,0);
@@ -2087,16 +2098,122 @@ function formatTodoDueLabel(val) {
   return diff + ' 天後';
 }
 function getMyPersonName() {
-  try {
-    var stored = localStorage.getItem('ximo-my-person');
-    if (stored) return stored;
-  } catch (e) {}
-  var names = getMemberNames();
-  return names[0] || '';
+  var u = getCurrentLoginUser();
+  return u ? (u.name || u.enName || '') : '';
 }
-function setMyPersonName(name) {
-  if (!name) return;
-  try { localStorage.setItem('ximo-my-person', name); } catch (e) {}
+function getPersonOpenId(field) {
+  if (!field) return '';
+  if (Array.isArray(field) && field[0]) return field[0].id || field[0].open_id || '';
+  return '';
+}
+function getCurrentLoginUser() {
+  if (currentLoginUser) return currentLoginUser;
+  try {
+    var raw = sessionStorage.getItem('ximo-login-user');
+    if (raw) currentLoginUser = JSON.parse(raw);
+  } catch (e) {}
+  return currentLoginUser;
+}
+function storeLoginUser(user) {
+  if (!user) return;
+  currentLoginUser = user;
+  try { sessionStorage.setItem('ximo-login-user', JSON.stringify(user)); } catch (e) {}
+  updateTodoLoginLabel();
+}
+function isTaskAssignedToMe(assigneeField) {
+  var u = getCurrentLoginUser();
+  if (!u) return false;
+  var openId = getPersonOpenId(assigneeField);
+  if (u.openId && openId && u.openId === openId) return true;
+  var name = personName(assigneeField);
+  if (!name) return false;
+  if (u.name && name === u.name) return true;
+  if (u.enName && name === u.enName) return true;
+  return false;
+}
+function loginWithCode(code, redirectUri) {
+  return fetch(API + '?action=login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: code, redirect_uri: redirectUri || '' })
+  }).then(function(r) { return r.json(); }).then(function(res) {
+    if (!res.ok || !res.user) throw new Error(res.error || res.msg || '登入失敗');
+    storeLoginUser(res.user);
+    return res.user;
+  });
+}
+function tryLarkClientAuth(appId) {
+  return new Promise(function(resolve) {
+    if (!window.h5sdk) { resolve(null); return; }
+    window.h5sdk.ready(function() {
+      var tt = window.tt;
+      if (!tt || !tt.requestAuthCode) { resolve(null); return; }
+      tt.requestAuthCode({
+        appId: appId,
+        success: function(res) {
+          var redirect = window.location.origin + window.location.pathname;
+          loginWithCode(res.code, redirect).then(resolve).catch(function() { resolve(null); });
+        },
+        fail: function() { resolve(null); }
+      });
+    });
+    setTimeout(function() { resolve(null); }, 8000);
+  });
+}
+function startBrowserLarkLogin() {
+  var redirect = window.location.origin + window.location.pathname;
+  fetch(API + '?action=auth-url&redirect_uri=' + encodeURIComponent(redirect))
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.url) window.location.href = res.url;
+      else alert('無法取得 Lark 登入連結，請確認 Lark 應用已設定');
+    }).catch(function(err) { alert('登入失敗：' + err.message); });
+}
+function resolveLoginUser() {
+  var params = new URLSearchParams(window.location.search);
+  var code = params.get('code');
+  if (code) {
+    var redirect = window.location.origin + window.location.pathname;
+    return loginWithCode(code, redirect).then(function(user) {
+      if (window.history.replaceState) window.history.replaceState({}, '', redirect);
+      loginUserReady = true;
+      return user;
+    }).catch(function(err) {
+      console.warn('Lark login', err);
+      loginUserReady = true;
+      return null;
+    });
+  }
+  var cached = getCurrentLoginUser();
+  if (cached) {
+    loginUserReady = true;
+    return Promise.resolve(cached);
+  }
+  return fetch(API + '?action=appid').then(function(r) { return r.json(); }).then(function(cfg) {
+    if (!cfg.appId) {
+      loginUserReady = true;
+      return null;
+    }
+    return tryLarkClientAuth(cfg.appId).then(function(user) {
+      loginUserReady = true;
+      return user;
+    });
+  }).catch(function() {
+    loginUserReady = true;
+    return null;
+  });
+}
+function updateTodoLoginLabel() {
+  var el = document.getElementById('todo-user-label');
+  if (!el) return;
+  var u = getCurrentLoginUser();
+  if (u && (u.name || u.enName)) {
+    el.innerHTML = '登入：' + escHtml(u.name || u.enName);
+    el.className = 'todo-user-label ok';
+  } else {
+    el.innerHTML = '<span class="todo-login-warn">尚未登入</span> · <button type="button" class="todo-login-link" onclick="startBrowserLarkLogin()">Lark 登入</button>';
+    el.className = 'todo-user-label';
+  }
 }
 function tsToDateInput(ts) {
   var d = parseTs(ts);
@@ -2320,10 +2437,21 @@ function loadExtraData() {
     membersData = results[2].records || [];
     renderDesigns();
     renderJournalPage();
-    renderTeamPanel();
     renderGanttFromData();
     buildMembersMap();
     fillMemberSelects();
+    resolveLoginUser().then(function(user) {
+      if (user && user.name) {
+        var authorSel = document.getElementById('dl-author');
+        if (authorSel) {
+          for (var i = 0; i < authorSel.options.length; i++) {
+            if (authorSel.options[i].text === user.name) { authorSel.selectedIndex = i; break; }
+          }
+        }
+      }
+      updateTodoLoginLabel();
+      renderTeamPanel();
+    });
   });
 }
 
@@ -2647,7 +2775,6 @@ function buildTodoTaskItems(scope) {
     };
   });
   var buckets = { overdue: [], today: [], soon: [] };
-  var myName = getMyPersonName();
 
   tasksData.forEach(function(rec) {
     var f = rec.fields;
@@ -2659,8 +2786,9 @@ function buildTodoTaskItems(scope) {
     if (diff === null) return;
     if (diff > 3) return;
 
+    if (scope === 'mine' && !isTaskAssignedToMe(f['負責人'])) return;
+
     var assignee = personName(f['負責人']) || '未指定';
-    if (scope === 'mine' && myName && assignee !== myName) return;
 
     var wiIds = getLinkIds(f['所屬工作項目']);
     var wi = wiIds[0] ? wiMap[wiIds[0]] : null;
@@ -2709,6 +2837,9 @@ function renderTeamPanel() {
 
   var buckets = buildTodoTaskItems(todoReminderScope);
   var html = '';
+  if (todoReminderScope === 'mine' && !getCurrentLoginUser()) {
+    html += '<div class="todo-login-banner">「我的」依 Lark 登入帳號篩選任務。請在 Lark 內開啟此頁，或 <button type="button" class="todo-login-link" onclick="startBrowserLarkLogin()">點此 Lark 登入</button></div>';
+  }
   html += renderTodoSection('已逾期', 'overdue', buckets.overdue, '無逾期任務');
   html += renderTodoSection('今日到期', 'today', buckets.today, '今日無到期任務');
   html += renderTodoSection('三天內到期', 'soon', buckets.soon, '三天內無到期任務');
@@ -3351,7 +3482,6 @@ function onDailyLogCatChange(sel) {
 
 function onDailyLogAuthorChange() {
   var author = document.getElementById('dl-author').value || '';
-  if (author) setMyPersonName(author);
   var existing = findDailyJournalRecord(dailyLogDate.getTime(), author);
   var contentEl = document.getElementById('dl-content');
   if (contentEl) {

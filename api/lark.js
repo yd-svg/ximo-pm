@@ -112,6 +112,66 @@ async function sendWebhook(text) {
   return await res.json();
 }
 
+async function loginWithOAuthCode(code, redirectUri) {
+  const body = {
+    grant_type: 'authorization_code',
+    client_id: APP_ID,
+    client_secret: APP_SECRET,
+    code: code
+  };
+  if (redirectUri) body.redirect_uri = redirectUri;
+
+  let tokenData = null;
+  const v2Res = await fetch(BASE_URL + '/authen/v2/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    body: JSON.stringify(body)
+  });
+  tokenData = await v2Res.json();
+
+  if (tokenData.code !== 0) {
+    const tenant = await getToken();
+    const v1Res = await fetch(BASE_URL + '/authen/v1/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + tenant
+      },
+      body: JSON.stringify({ grant_type: 'authorization_code', code: code })
+    });
+    tokenData = await v1Res.json();
+  }
+
+  const accessToken = tokenData.data && tokenData.data.access_token;
+  if (!accessToken) {
+    throw new Error(tokenData.msg || tokenData.message || '無法取得 user_access_token');
+  }
+
+  const infoRes = await fetch(BASE_URL + '/authen/v1/user_info', {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  });
+  const info = await infoRes.json();
+  if (info.code !== 0) throw new Error(info.msg || '無法取得使用者資訊');
+
+  const u = info.data || {};
+  return {
+    name: u.name || u.en_name || '',
+    enName: u.en_name || '',
+    openId: u.open_id || '',
+    userId: u.user_id || ''
+  };
+}
+
+function buildAuthUrl(redirectUri) {
+  const q = new URLSearchParams({
+    client_id: APP_ID,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    state: 'ximo_pm'
+  });
+  return 'https://passport.larksuite.com/suite/passport/oauth/authorize?' + q.toString();
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -121,6 +181,24 @@ export default async function handler(req, res) {
   const { table, recordId, action } = req.query;
 
   try {
+    if (action === 'appid' && req.method === 'GET') {
+      return res.status(200).json({ appId: APP_ID });
+    }
+
+    if (action === 'auth-url' && req.method === 'GET') {
+      const redirect = (req.query.redirect_uri || process.env.SITE_URL || '').trim();
+      if (!redirect) return res.status(400).json({ error: 'missing redirect_uri' });
+      return res.status(200).json({ url: buildAuthUrl(redirect), appId: APP_ID });
+    }
+
+    if (action === 'login' && req.method === 'POST') {
+      const code = req.body && req.body.code;
+      if (!code) return res.status(400).json({ error: 'missing code' });
+      const redirectUri = (req.body.redirect_uri || '').trim();
+      const user = await loginWithOAuthCode(code, redirectUri);
+      return res.status(200).json({ ok: true, user });
+    }
+
     if (action === 'ping' && req.method === 'GET') {
       let lark = null;
       let tokenOk = false;
