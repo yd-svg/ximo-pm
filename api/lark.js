@@ -293,6 +293,65 @@ async function createWikiBitableNode(accessToken, spaceId, parentNodeToken, appT
   return data.node;
 }
 
+async function getWikiSpaceHomeNodeToken(accessToken, spaceId) {
+  try {
+    const data = await larkApiGet(accessToken, '/wiki/v2/spaces/' + encodeURIComponent(spaceId));
+    const space = data.space || data;
+    if (space && space.home_page_id) {
+      const node = await getWikiNode(accessToken, space.home_page_id, '知識庫首頁');
+      if (node && node.node_token) return node.node_token;
+    }
+  } catch (e) { /* ignore */ }
+  const roots = await listWikiChildNodes(accessToken, spaceId, '');
+  if (roots.length && roots[0].node_token) return roots[0].node_token;
+  return '';
+}
+
+async function moveBitableToWikiSpace(accessToken, spaceId, parentNodeToken, appToken) {
+  const body = {
+    obj_type: 'bitable',
+    obj_token: appToken
+  };
+  const parent = String(parentNodeToken || '').trim();
+  if (parent) body.parent_node_token = parent;
+  const data = await larkApiPost(accessToken, '/wiki/v2/spaces/' + encodeURIComponent(spaceId) + '/nodes/move_docs', body);
+  if (data && data.node) return data.node;
+  if (data && data.node_token) return { node_token: data.node_token };
+  return null;
+}
+
+async function placeCopiedBitableInWiki(accessToken, parent, appToken, title) {
+  const parentCandidates = [];
+  if (parent.node_token) parentCandidates.push(parent.node_token);
+  const homeToken = await getWikiSpaceHomeNodeToken(accessToken, parent.space_id);
+  if (homeToken && parentCandidates.indexOf(homeToken) < 0) parentCandidates.push(homeToken);
+  parentCandidates.push('');
+
+  let lastErr = null;
+  for (let i = 0; i < parentCandidates.length; i++) {
+    try {
+      const node = await createWikiBitableNode(accessToken, parent.space_id, parentCandidates[i], appToken, title);
+      if (node && node.node_token) {
+        return buildWikiNodeUrl(parent.wikiUrl, node.node_token);
+      }
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  for (let i = 0; i < parentCandidates.length; i++) {
+    try {
+      const node = await moveBitableToWikiSpace(accessToken, parent.space_id, parentCandidates[i], appToken);
+      if (node && node.node_token) {
+        return buildWikiNodeUrl(parent.wikiUrl, node.node_token);
+      }
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  const detail = lastErr && lastErr.message ? lastErr.message : '未知錯誤';
+  throw new Error('無法將封存頁面放入知識庫（' + detail + '）。請確認 Lark 應用已開通 wiki:wiki 權限，且 Wiki 封存位置為正確的知識庫連結。');
+}
+
 async function resolveWikiParentTarget(accessToken, wikiUrl) {
   const parsed = extractLarkUrlToken(wikiUrl);
   if (!parsed || !parsed.token) throw new Error('知識庫存放位置連結無效');
@@ -324,13 +383,7 @@ async function copyArchiveTemplateToParent(accessToken, parentWikiUrl, projectNa
   if (templateParsed && templateParsed.kind === 'base') {
     const newAppToken = await copyBitableApp(accessToken, templateParsed.token, title);
     const tableMap = await resolveArchiveTableMap(accessToken, newAppToken);
-    let wikiUrl = '';
-    try {
-      const node = await createWikiBitableNode(accessToken, parent.space_id, parent.node_token, newAppToken, title);
-      wikiUrl = buildWikiNodeUrl(parent.wikiUrl, node.node_token);
-    } catch (e) {
-      wikiUrl = buildBaseAppUrl(templateUrl, newAppToken);
-    }
+    const wikiUrl = await placeCopiedBitableInWiki(accessToken, parent, newAppToken, title);
     return { appToken: newAppToken, tableMap: tableMap, wikiUrl: wikiUrl };
   }
 
@@ -1076,7 +1129,9 @@ async function archiveProject(token, projectId, wikiUrl) {
     copyError: copyError,
     wikiNote: copiedToWikiBase
       ? (createdCopy
-        ? '已從範本複製新知識庫頁面，並寫入此標案相關資料'
+        ? (String(finalWikiUrl || '').indexOf('/wiki/') >= 0
+          ? '已從範本複製並建立知識庫頁面，資料已寫入該頁面'
+          : '已複製多維表格並寫入資料，但可能未掛入知識庫（請檢查連結是否為 wiki/ 開頭）')
         : '已將此標案相關資料複製至您貼上的知識庫多維表格（結構與後台相同）')
       : (copyError
         ? '標案已封存，但複製至多維表格失敗：' + copyError
