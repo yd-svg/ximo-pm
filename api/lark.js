@@ -133,6 +133,9 @@ function formatArchiveCopyError(msg) {
   if (/not found/i.test(s)) {
     return '找不到指定的知識庫頁面或多維表格範本。請確認：① Wiki 封存位置為知識庫首頁/目錄頁完整連結；② Vercel 的 LARK_ARCHIVE_TEMPLATE 為同一租戶內可開啟的 /base/ 範本連結。';
   }
+  if (/FieldNameNotFound/i.test(s)) {
+    return '知識庫範本多維表格欄位與後台不一致（已自動略過不存在的欄位仍失敗）。請確認 LARK_ARCHIVE_TEMPLATE 是從同一套後台多維表格複製的完整範本，或重新複製最新版範本後更新環境變數。';
+  }
   return s;
 }
 
@@ -493,6 +496,79 @@ async function listBitableTables(accessToken, appToken) {
   return items;
 }
 
+async function listBitableFields(accessToken, appToken, tableId) {
+  const items = [];
+  let pageToken = '';
+  do {
+    let path = '/bitable/v1/apps/' + encodeURIComponent(appToken) + '/tables/' + encodeURIComponent(tableId) + '/fields?page_size=100';
+    if (pageToken) path += '&page_token=' + encodeURIComponent(pageToken);
+    const data = await larkApiGet(accessToken, path);
+    if (data.items) items.push.apply(items, data.items);
+    pageToken = data.has_more ? (data.page_token || '') : '';
+  } while (pageToken);
+  return items;
+}
+
+const ARCHIVE_FIELD_ALIASES = {
+  '所數標案': ['所屬標案'],
+  '所屬標案': ['所數標案'],
+  'Wiki存放位置': ['Wiki連結', '知識庫連結', '封存連結'],
+  'Wiki連結': ['Wiki存放位置', '知識庫連結', '封存連結'],
+  '知識庫連結': ['Wiki連結', 'Wiki存放位置', '封存連結'],
+  '封存連結': ['Wiki連結', 'Wiki存放位置', '知識庫連結']
+};
+
+async function getTableFieldNameSet(accessToken, appToken, tableId, cache) {
+  const key = appToken + ':' + tableId;
+  if (cache[key]) return cache[key];
+  const fields = await listBitableFields(accessToken, appToken, tableId);
+  const set = {};
+  fields.forEach(function(f) {
+    if (f.field_name) set[f.field_name] = 1;
+  });
+  cache[key] = set;
+  return set;
+}
+
+function remapFieldsForTarget(fields, allowedSet) {
+  const out = {};
+  Object.keys(fields || {}).forEach(function(name) {
+    let targetName = name;
+    if (!allowedSet[targetName]) {
+      const aliases = ARCHIVE_FIELD_ALIASES[name];
+      if (aliases) {
+        for (let i = 0; i < aliases.length; i++) {
+          if (allowedSet[aliases[i]]) {
+            targetName = aliases[i];
+            break;
+          }
+        }
+      }
+    }
+    if (allowedSet[targetName]) out[targetName] = fields[name];
+  });
+  return out;
+}
+
+function pickProjectLinkFieldName(allowedSet) {
+  if (allowedSet['所屬標案']) return '所屬標案';
+  if (allowedSet['所數標案']) return '所數標案';
+  return '';
+}
+
+function pickWikiUrlFieldNames(allowedSet) {
+  const names = [];
+  ['知識庫連結', '封存連結', 'Wiki存放位置', 'Wiki連結'].forEach(function(name) {
+    if (allowedSet[name]) names.push(name);
+  });
+  return names;
+}
+
+async function filterFieldsForArchiveTable(accessToken, appToken, tableId, fields, cache) {
+  const allowedSet = await getTableFieldNameSet(accessToken, appToken, tableId, cache);
+  return remapFieldsForTarget(fields, allowedSet);
+}
+
 function matchArchiveTableByKeywords(tables, keywords) {
   return tables.find(function(t) {
     const name = (t.name || '').toLowerCase();
@@ -686,20 +762,28 @@ async function copyProjectBundleToWikiBase(token, bundle, wikiUrl) {
   const targetApp = target.appToken;
   const tableMap = target.tableMap;
   const finalWikiUrl = target.wikiUrl || wikiUrl;
-  const projFields = cloneFields(bundle.project.fields);
+  const fieldCache = {};
+
+  const projAllowed = await getTableFieldNameSet(token, targetApp, tableMap.projects, fieldCache);
+  const projFields = remapFieldsForTarget(cloneFields(bundle.project.fields), projAllowed);
   projFields['狀態'] = '封存';
   if (finalWikiUrl) {
-    projFields['知識庫連結'] = makeWikiLink(finalWikiUrl);
-    projFields['封存連結'] = finalWikiUrl;
+    const wikiNames = pickWikiUrlFieldNames(projAllowed);
+    if (wikiNames.indexOf('知識庫連結') >= 0) projFields['知識庫連結'] = makeWikiLink(finalWikiUrl);
+    if (wikiNames.indexOf('封存連結') >= 0) projFields['封存連結'] = finalWikiUrl;
+    if (wikiNames.indexOf('Wiki存放位置') >= 0) projFields['Wiki存放位置'] = finalWikiUrl;
+    if (wikiNames.indexOf('Wiki連結') >= 0) projFields['Wiki連結'] = finalWikiUrl;
   }
   const projCreated = await batchCreateRecords(token, targetApp, tableMap.projects, [projFields]);
   const newProjId = projCreated[0] && projCreated[0].record_id;
   if (!newProjId) throw new Error('複製標案至知識庫失敗');
 
+  const wiAllowed = await getTableFieldNameSet(token, targetApp, tableMap.workitems, fieldCache);
+  const wiLinkField = pickProjectLinkFieldName(wiAllowed) || '所屬標案';
   const wiMap = {};
   const wiFieldsList = bundle.workitems.map(function(wi) {
-    const f = cloneFields(wi.fields);
-    f['所屬標案'] = [newProjId];
+    const f = remapFieldsForTarget(cloneFields(wi.fields), wiAllowed);
+    if (wiAllowed[wiLinkField]) f[wiLinkField] = [newProjId];
     return f;
   });
   const wiCreated = await batchCreateRecords(token, targetApp, tableMap.workitems, wiFieldsList);
@@ -707,27 +791,31 @@ async function copyProjectBundleToWikiBase(token, bundle, wikiUrl) {
     if (wiCreated[i]) wiMap[wi.record_id] = wiCreated[i].record_id;
   });
 
+  const taskAllowed = await getTableFieldNameSet(token, targetApp, tableMap.tasks, fieldCache);
   const taskFieldsList = bundle.tasks.map(function(t) {
-    const f = cloneFields(t.fields);
+    const f = remapFieldsForTarget(cloneFields(t.fields), taskAllowed);
     const oldWi = getLinkIds(t.fields['所屬工作項目'])[0];
-    if (oldWi && wiMap[oldWi]) f['所屬工作項目'] = [wiMap[oldWi]];
+    if (oldWi && wiMap[oldWi] && taskAllowed['所屬工作項目']) f['所屬工作項目'] = [wiMap[oldWi]];
     return f;
   });
   await batchCreateRecords(token, targetApp, tableMap.tasks, taskFieldsList);
 
+  const expAllowed = await getTableFieldNameSet(token, targetApp, tableMap.expenses, fieldCache);
+  const expProjField = pickProjectLinkFieldName(expAllowed);
   const expFieldsList = bundle.expenses.map(function(e) {
-    const f = cloneFields(e.fields);
+    const f = remapFieldsForTarget(cloneFields(e.fields), expAllowed);
     const oldWi = getLinkIds(e.fields['所屬工作項目'])[0];
-    if (oldWi && wiMap[oldWi]) f['所屬工作項目'] = [wiMap[oldWi]];
-    f['所數標案'] = [newProjId];
+    if (oldWi && wiMap[oldWi] && expAllowed['所屬工作項目']) f['所屬工作項目'] = [wiMap[oldWi]];
+    if (expProjField) f[expProjField] = [newProjId];
     return f;
   });
   await batchCreateRecords(token, targetApp, tableMap.expenses, expFieldsList);
 
+  const desAllowed = await getTableFieldNameSet(token, targetApp, tableMap.designs, fieldCache);
   const desFieldsList = bundle.designs.map(function(d) {
-    const f = cloneFields(d.fields);
+    const f = remapFieldsForTarget(cloneFields(d.fields), desAllowed);
     const oldWi = getLinkIds(d.fields['所屬工作項目'])[0];
-    if (oldWi && wiMap[oldWi]) f['所屬工作項目'] = [wiMap[oldWi]];
+    if (oldWi && wiMap[oldWi] && desAllowed['所屬工作項目']) f['所屬工作項目'] = [wiMap[oldWi]];
     return f;
   });
   await batchCreateRecords(token, targetApp, tableMap.designs, desFieldsList);
@@ -761,7 +849,19 @@ async function archiveProject(token, projectId, wikiUrl) {
     updateFields['知識庫連結'] = makeWikiLink(finalWikiUrl);
     updateFields['封存連結'] = finalWikiUrl;
   }
-  await updateRecord(token, TABLES.projects, projectId, updateFields);
+  const srcFieldCache = {};
+  const srcAllowed = await getTableFieldNameSet(token, APP_TOKEN, TABLES.projects, srcFieldCache);
+  const safeUpdate = remapFieldsForTarget(updateFields, srcAllowed);
+  if (finalWikiUrl) {
+    const wikiNames = pickWikiUrlFieldNames(srcAllowed);
+    if (wikiNames.indexOf('知識庫連結') >= 0) safeUpdate['知識庫連結'] = makeWikiLink(finalWikiUrl);
+    if (wikiNames.indexOf('封存連結') >= 0) safeUpdate['封存連結'] = finalWikiUrl;
+    if (wikiNames.indexOf('Wiki存放位置') >= 0) safeUpdate['Wiki存放位置'] = finalWikiUrl;
+    if (wikiNames.indexOf('Wiki連結') >= 0) safeUpdate['Wiki連結'] = finalWikiUrl;
+  }
+  if (srcAllowed['狀態']) safeUpdate['狀態'] = '封存';
+  if (srcAllowed['封存摘要']) safeUpdate['封存摘要'] = summary;
+  await updateRecord(token, TABLES.projects, projectId, safeUpdate);
 
   return {
     ok: true,
