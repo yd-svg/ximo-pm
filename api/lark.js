@@ -79,6 +79,21 @@ async function updateRecord(token, tableId, recordId, fields) {
   });
   return await res.json();
 }
+
+async function updateBitableRecord(token, appToken, tableId, recordId, fields) {
+  const url = BASE_URL + '/bitable/v1/apps/' + appToken + '/tables/' + tableId + '/records/' + recordId;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ fields: fields })
+  });
+  const data = await res.json();
+  if (data.code !== 0) throw new Error(data.msg || 'update failed');
+  return data;
+}
  
 // 刪除記錄
 async function deleteRecord(token, tableId, recordId) {
@@ -135,6 +150,9 @@ function formatArchiveCopyError(msg) {
   }
   if (/FieldNameNotFound/i.test(s)) {
     return '知識庫範本多維表格欄位與後台不一致（已自動略過不存在的欄位仍失敗）。請確認 LARK_ARCHIVE_TEMPLATE 是從同一套後台多維表格複製的完整範本，或重新複製最新版範本後更新環境變數。';
+  }
+  if (/Duplex Link/i.test(s)) {
+    return '雙向關聯欄位格式錯誤（已修正程式，請重新封存）。若仍失敗，請確認範本與後台結構一致。';
   }
   return s;
 }
@@ -518,16 +536,80 @@ const ARCHIVE_FIELD_ALIASES = {
   '封存連結': ['Wiki連結', 'Wiki存放位置', '知識庫連結']
 };
 
-async function getTableFieldNameSet(accessToken, appToken, tableId, cache) {
-  const key = appToken + ':' + tableId;
-  if (cache[key]) return cache[key];
+const BITABLE_LINK_FIELD_TYPES = { 18: 1, 21: 1 };
+const BITABLE_SKIP_FIELD_TYPES = { 22: 1, 23: 1, 1001: 1, 1002: 1, 1003: 1, 1004: 1 };
+
+async function getTableFieldSchemas(accessToken, appToken, tableId, cache) {
+  const setKey = appToken + ':' + tableId;
+  const metaKey = appToken + ':' + tableId + ':meta';
+  if (cache[setKey] && cache[metaKey]) {
+    return { allowedSet: cache[setKey], fieldMeta: cache[metaKey] };
+  }
   const fields = await listBitableFields(accessToken, appToken, tableId);
   const set = {};
+  const meta = {};
   fields.forEach(function(f) {
-    if (f.field_name) set[f.field_name] = 1;
+    if (f.field_name) {
+      set[f.field_name] = 1;
+      meta[f.field_name] = { type: f.type };
+    }
   });
-  cache[key] = set;
-  return set;
+  cache[setKey] = set;
+  cache[metaKey] = meta;
+  return { allowedSet: set, fieldMeta: meta };
+}
+
+async function getTableFieldNameSet(accessToken, appToken, tableId, cache) {
+  const schemas = await getTableFieldSchemas(accessToken, appToken, tableId, cache);
+  return schemas.allowedSet;
+}
+
+function normalizeLinkFieldValue(val) {
+  return getLinkIds(val).map(function(id) { return String(id); });
+}
+
+function buildArchiveRecordFields(rawFields, allowedSet, fieldMeta, overrides) {
+  overrides = overrides || {};
+  const remapped = remapFieldsForTarget(rawFields, allowedSet);
+  const out = {};
+  Object.keys(remapped).forEach(function(name) {
+    if (overrides[name] !== undefined) return;
+    const meta = fieldMeta[name];
+    if (!meta) return;
+    if (BITABLE_SKIP_FIELD_TYPES[meta.type]) return;
+    if (BITABLE_LINK_FIELD_TYPES[meta.type]) return;
+    if (meta.type === 11) {
+      const val = remapped[name];
+      if (Array.isArray(val)) {
+        const ids = val.map(function(x) {
+          if (typeof x === 'string') return x;
+          if (x && x.id) return x.id;
+          if (x && x.user_id) return x.user_id;
+          return '';
+        }).filter(Boolean);
+        if (ids.length) out[name] = ids;
+      }
+      return;
+    }
+    if (meta.type === 15) {
+      const val = remapped[name];
+      if (val && typeof val === 'object' && val.link) out[name] = val;
+      else if (typeof val === 'string' && val) out[name] = { link: val, text: val };
+      return;
+    }
+    out[name] = remapped[name];
+  });
+  Object.keys(overrides).forEach(function(name) {
+    if (!allowedSet[name]) return;
+    const meta = fieldMeta[name];
+    const val = overrides[name];
+    if (meta && BITABLE_LINK_FIELD_TYPES[meta.type]) {
+      out[name] = normalizeLinkFieldValue(val);
+      return;
+    }
+    out[name] = val;
+  });
+  return out;
 }
 
 function remapFieldsForTarget(fields, allowedSet) {
@@ -764,59 +846,78 @@ async function copyProjectBundleToWikiBase(token, bundle, wikiUrl) {
   const finalWikiUrl = target.wikiUrl || wikiUrl;
   const fieldCache = {};
 
-  const projAllowed = await getTableFieldNameSet(token, targetApp, tableMap.projects, fieldCache);
-  const projFields = remapFieldsForTarget(cloneFields(bundle.project.fields), projAllowed);
-  projFields['狀態'] = '封存';
+  const projSchemas = await getTableFieldSchemas(token, targetApp, tableMap.projects, fieldCache);
+  const projAllowed = projSchemas.allowedSet;
+  const projMeta = projSchemas.fieldMeta;
+  const projOverrides = { '狀態': '封存' };
   if (finalWikiUrl) {
     const wikiNames = pickWikiUrlFieldNames(projAllowed);
-    if (wikiNames.indexOf('知識庫連結') >= 0) projFields['知識庫連結'] = makeWikiLink(finalWikiUrl);
-    if (wikiNames.indexOf('封存連結') >= 0) projFields['封存連結'] = finalWikiUrl;
-    if (wikiNames.indexOf('Wiki存放位置') >= 0) projFields['Wiki存放位置'] = finalWikiUrl;
-    if (wikiNames.indexOf('Wiki連結') >= 0) projFields['Wiki連結'] = finalWikiUrl;
+    if (wikiNames.indexOf('知識庫連結') >= 0) projOverrides['知識庫連結'] = makeWikiLink(finalWikiUrl);
+    if (wikiNames.indexOf('封存連結') >= 0) projOverrides['封存連結'] = finalWikiUrl;
+    if (wikiNames.indexOf('Wiki存放位置') >= 0) projOverrides['Wiki存放位置'] = finalWikiUrl;
+    if (wikiNames.indexOf('Wiki連結') >= 0) projOverrides['Wiki連結'] = finalWikiUrl;
   }
+  const projFields = buildArchiveRecordFields(cloneFields(bundle.project.fields), projAllowed, projMeta, projOverrides);
   const projCreated = await batchCreateRecords(token, targetApp, tableMap.projects, [projFields]);
   const newProjId = projCreated[0] && projCreated[0].record_id;
   if (!newProjId) throw new Error('複製標案至知識庫失敗');
 
-  const wiAllowed = await getTableFieldNameSet(token, targetApp, tableMap.workitems, fieldCache);
+  const wiSchemas = await getTableFieldSchemas(token, targetApp, tableMap.workitems, fieldCache);
+  const wiAllowed = wiSchemas.allowedSet;
+  const wiMeta = wiSchemas.fieldMeta;
   const wiLinkField = pickProjectLinkFieldName(wiAllowed) || '所屬標案';
   const wiMap = {};
   const wiFieldsList = bundle.workitems.map(function(wi) {
-    const f = remapFieldsForTarget(cloneFields(wi.fields), wiAllowed);
-    if (wiAllowed[wiLinkField]) f[wiLinkField] = [newProjId];
-    return f;
+    const overrides = {};
+    if (wiAllowed[wiLinkField]) overrides[wiLinkField] = [newProjId];
+    return buildArchiveRecordFields(cloneFields(wi.fields), wiAllowed, wiMeta, overrides);
   });
   const wiCreated = await batchCreateRecords(token, targetApp, tableMap.workitems, wiFieldsList);
   bundle.workitems.forEach(function(wi, i) {
     if (wiCreated[i]) wiMap[wi.record_id] = wiCreated[i].record_id;
   });
 
-  const taskAllowed = await getTableFieldNameSet(token, targetApp, tableMap.tasks, fieldCache);
+  if (projAllowed['工作項目'] && wiCreated.length) {
+    const newWiIds = wiCreated.map(function(r) { return r.record_id; }).filter(Boolean);
+    if (newWiIds.length) {
+      await updateBitableRecord(token, targetApp, tableMap.projects, newProjId, {
+        '工作項目': newWiIds.map(String)
+      });
+    }
+  }
+
+  const taskSchemas = await getTableFieldSchemas(token, targetApp, tableMap.tasks, fieldCache);
+  const taskAllowed = taskSchemas.allowedSet;
+  const taskMeta = taskSchemas.fieldMeta;
   const taskFieldsList = bundle.tasks.map(function(t) {
-    const f = remapFieldsForTarget(cloneFields(t.fields), taskAllowed);
+    const overrides = {};
     const oldWi = getLinkIds(t.fields['所屬工作項目'])[0];
-    if (oldWi && wiMap[oldWi] && taskAllowed['所屬工作項目']) f['所屬工作項目'] = [wiMap[oldWi]];
-    return f;
+    if (oldWi && wiMap[oldWi] && taskAllowed['所屬工作項目']) overrides['所屬工作項目'] = [wiMap[oldWi]];
+    return buildArchiveRecordFields(cloneFields(t.fields), taskAllowed, taskMeta, overrides);
   });
   await batchCreateRecords(token, targetApp, tableMap.tasks, taskFieldsList);
 
-  const expAllowed = await getTableFieldNameSet(token, targetApp, tableMap.expenses, fieldCache);
+  const expSchemas = await getTableFieldSchemas(token, targetApp, tableMap.expenses, fieldCache);
+  const expAllowed = expSchemas.allowedSet;
+  const expMeta = expSchemas.fieldMeta;
   const expProjField = pickProjectLinkFieldName(expAllowed);
   const expFieldsList = bundle.expenses.map(function(e) {
-    const f = remapFieldsForTarget(cloneFields(e.fields), expAllowed);
+    const overrides = {};
     const oldWi = getLinkIds(e.fields['所屬工作項目'])[0];
-    if (oldWi && wiMap[oldWi] && expAllowed['所屬工作項目']) f['所屬工作項目'] = [wiMap[oldWi]];
-    if (expProjField) f[expProjField] = [newProjId];
-    return f;
+    if (oldWi && wiMap[oldWi] && expAllowed['所屬工作項目']) overrides['所屬工作項目'] = [wiMap[oldWi]];
+    if (expProjField) overrides[expProjField] = [newProjId];
+    return buildArchiveRecordFields(cloneFields(e.fields), expAllowed, expMeta, overrides);
   });
   await batchCreateRecords(token, targetApp, tableMap.expenses, expFieldsList);
 
-  const desAllowed = await getTableFieldNameSet(token, targetApp, tableMap.designs, fieldCache);
+  const desSchemas = await getTableFieldSchemas(token, targetApp, tableMap.designs, fieldCache);
+  const desAllowed = desSchemas.allowedSet;
+  const desMeta = desSchemas.fieldMeta;
   const desFieldsList = bundle.designs.map(function(d) {
-    const f = remapFieldsForTarget(cloneFields(d.fields), desAllowed);
+    const overrides = {};
     const oldWi = getLinkIds(d.fields['所屬工作項目'])[0];
-    if (oldWi && wiMap[oldWi] && desAllowed['所屬工作項目']) f['所屬工作項目'] = [wiMap[oldWi]];
-    return f;
+    if (oldWi && wiMap[oldWi] && desAllowed['所屬工作項目']) overrides['所屬工作項目'] = [wiMap[oldWi]];
+    return buildArchiveRecordFields(cloneFields(d.fields), desAllowed, desMeta, overrides);
   });
   await batchCreateRecords(token, targetApp, tableMap.designs, desFieldsList);
 
@@ -841,30 +942,22 @@ async function archiveProject(token, projectId, wikiUrl) {
     copyError = formatArchiveCopyError(err.message || String(err));
   }
 
-  const updateFields = {
-    '狀態': '封存',
-    '封存摘要': summary
-  };
-  if (finalWikiUrl) {
-    updateFields['知識庫連結'] = makeWikiLink(finalWikiUrl);
-    updateFields['封存連結'] = finalWikiUrl;
+  if (copiedToWikiBase) {
+    const srcFieldCache = {};
+    const srcAllowed = await getTableFieldNameSet(token, APP_TOKEN, TABLES.projects, srcFieldCache);
+    const safeUpdate = { '狀態': '封存', '封存摘要': summary };
+    if (finalWikiUrl) {
+      const wikiNames = pickWikiUrlFieldNames(srcAllowed);
+      if (wikiNames.indexOf('知識庫連結') >= 0) safeUpdate['知識庫連結'] = makeWikiLink(finalWikiUrl);
+      if (wikiNames.indexOf('封存連結') >= 0) safeUpdate['封存連結'] = finalWikiUrl;
+      if (wikiNames.indexOf('Wiki存放位置') >= 0) safeUpdate['Wiki存放位置'] = finalWikiUrl;
+      if (wikiNames.indexOf('Wiki連結') >= 0) safeUpdate['Wiki連結'] = finalWikiUrl;
+    }
+    await updateRecord(token, TABLES.projects, projectId, safeUpdate);
   }
-  const srcFieldCache = {};
-  const srcAllowed = await getTableFieldNameSet(token, APP_TOKEN, TABLES.projects, srcFieldCache);
-  const safeUpdate = remapFieldsForTarget(updateFields, srcAllowed);
-  if (finalWikiUrl) {
-    const wikiNames = pickWikiUrlFieldNames(srcAllowed);
-    if (wikiNames.indexOf('知識庫連結') >= 0) safeUpdate['知識庫連結'] = makeWikiLink(finalWikiUrl);
-    if (wikiNames.indexOf('封存連結') >= 0) safeUpdate['封存連結'] = finalWikiUrl;
-    if (wikiNames.indexOf('Wiki存放位置') >= 0) safeUpdate['Wiki存放位置'] = finalWikiUrl;
-    if (wikiNames.indexOf('Wiki連結') >= 0) safeUpdate['Wiki連結'] = finalWikiUrl;
-  }
-  if (srcAllowed['狀態']) safeUpdate['狀態'] = '封存';
-  if (srcAllowed['封存摘要']) safeUpdate['封存摘要'] = summary;
-  await updateRecord(token, TABLES.projects, projectId, safeUpdate);
 
   return {
-    ok: true,
+    ok: copiedToWikiBase,
     projectName: name,
     summary: summary,
     counts: {

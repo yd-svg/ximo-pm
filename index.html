@@ -5099,8 +5099,22 @@ function confirmArchiveProject() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId: archivingProjId, wikiUrl: url })
       }).then(function(r) { return r.json(); }).then(function(res) {
-        if (!res.ok) throw new Error(res.error || res.msg || '封存失敗');
+        if (!res.ok || !res.copiedToWikiBase) {
+          var errMsg = res.copyError || res.error || res.msg || '資料未寫入知識庫';
+          var hint = /wiki:/i.test(errMsg)
+            ? '\n\n【請在 Lark 開發者後台開通並發布】\n· wiki:wiki\n· wiki:node:read\n· bitable:app\n路徑：應用 → 權限管理 → 搜尋 wiki / bitable'
+            : (/FieldNameNotFound/i.test(errMsg)
+              ? '\n\n【常見原因】範本多維表格欄位與後台不一致。請從現行後台複製一份最新範本，更新 Vercel 的 LARK_ARCHIVE_TEMPLATE。'
+              : (/Duplex Link/i.test(errMsg)
+              ? '\n\n【已修復】雙向關聯欄位格式問題，請重新封存即可。'
+              : (/not found/i.test(errMsg)
+              ? '\n\n【常見原因】\n1. Wiki 封存位置連結不是知識庫頁面完整網址\n2. LARK_ARCHIVE_TEMPLATE 範本連結錯誤或已刪除\n3. 範本與標案不在同一 Lark 租戶'
+              : '')));
+          alert('封存未完成，標案仍保留於前台。\n\n' + errMsg + hint);
+          return;
+        }
         var savedProjId = archivingProjId;
+        var rec = projectsData.find(function(p) { return p.record_id === savedProjId; });
         var oldFields = rec ? {
           '狀態': rec.fields['狀態'],
           '知識庫連結': rec.fields['知識庫連結'],
@@ -5112,20 +5126,9 @@ function confirmArchiveProject() {
         loadData();
         showUndoToast('標案已封存');
         var openUrl = res.wikiUrl || url;
-        if (res.copyError && !res.copiedToWikiBase) {
-          var hint = /wiki:/i.test(res.copyError)
-            ? '\n\n【請在 Lark 開發者後台開通並發布】\n· wiki:wiki\n· wiki:node:read\n· bitable:app\n路徑：應用 → 權限管理 → 搜尋 wiki / bitable'
-            : (/FieldNameNotFound/i.test(res.copyError)
-              ? '\n\n【常見原因】範本多維表格欄位與後台不一致。請從現行後台複製一份最新範本，更新 Vercel 的 LARK_ARCHIVE_TEMPLATE。'
-              : (/not found/i.test(res.copyError)
-              ? '\n\n【常見原因】\n1. Wiki 封存位置連結不是知識庫頁面完整網址\n2. LARK_ARCHIVE_TEMPLATE 範本連結錯誤或已刪除\n3. 範本與標案不在同一 Lark 租戶'
-              : ''));
-          alert('標案已在系統標記為封存，但資料尚未寫入知識庫。\n\n' + res.copyError + hint + '\n\n請將標案狀態改回「進行中」後，修正連結再重新封存。');
-        } else {
-          var msg = res.wikiNote || res.summary || '封存完成';
-          if (confirm(msg + '\n\n是否開啟知識庫頁面？')) {
-            window.open(openUrl, '_blank', 'noopener');
-          }
+        var msg = res.wikiNote || res.summary || '封存完成';
+        if (confirm(msg + '\n\n是否開啟知識庫頁面？')) {
+          window.open(openUrl, '_blank', 'noopener');
         }
       }).catch(function(err) {
         alert('封存失敗：' + err.message);
