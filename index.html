@@ -683,6 +683,7 @@ button.btn-loading::after{content:'…';margin-left:2px}
             <div class="fg"><label>備註</label><input type="text" id="p-remark" placeholder="備註說明"></div>
             <div class="fg"><label>付款總金額</label><input type="text" id="p-total" placeholder="NT$0" oninput="updatePayUpper()"><div class="p-upper" id="p-upper"></div></div>
             <div class="bss">
+              <button class="bsm" onclick="savePaymentOnly()">僅存檔（不列印）</button>
               <button class="bsub" onclick="prevPay()">確認資料預覽</button>
             </div>
           </div>
@@ -828,6 +829,7 @@ button.btn-loading::after{content:'…';margin-left:2px}
     <div class="ppb"><iframe id="prev-iframe" title="付款申請單預覽"></iframe></div>
     <div class="ppf">
       <button class="bcan" onclick="cl('pp-prev')">返回修改</button>
+      <button class="bsm" onclick="savePaymentOnly(true)">僅存檔不列印</button>
       <button class="bsm" onclick="window.open(buildPayPrintUrl({print:true}),'_blank')">新分頁列印</button>
       <button class="bpri" onclick="doPrint()">🖨 確認列印並存檔</button>
     </div>
@@ -1968,30 +1970,55 @@ function triggerPaymentPrint() {
   iframe.src = buildPayPrintUrl({ embed: true });
 }
 
-function doPrint() {
+function formatPaymentSaveMessage(res, printed) {
+  var msg = printed ? '已列印並存檔至多維表格！' : '已存檔至多維表格（未列印）';
+  if (res && res.partialErrors && res.partialErrors.length) {
+    msg += '\n（部分寫入失敗：' + res.partialErrors.join('；') + '）';
+  }
+  if (res && res.notify) {
+    if (res.notify.mode === 'automation') {
+      msg += '\n（通知由 Lark 多維表格自動化發送）';
+    } else if (res.notify.skipped) {
+      msg += '\n（機器人通知未設定：請在 Vercel 設定 LARK_WEBHOOK_URL）';
+    } else if (!res.notify.ok) {
+      msg += '\n（機器人通知失敗：' + (res.notify.error || res.notify.reason || '請稍後再試') + '）';
+    }
+  }
+  return msg;
+}
+
+function validatePaymentForm() {
   var data = collectPaymentFields();
-  if (!data.total) { alert('請填寫付款總金額'); return; }
-  if (!data.payee) { alert('請填寫支付對象'); return; }
+  if (!data.total) { alert('請填寫付款總金額'); return null; }
+  if (!data.payee) { alert('請填寫支付對象'); return null; }
   if (!data.applicant) data.applicant = '未指定';
+  return data;
+}
+
+function savePaymentOnly(closePreview) {
+  if (!getLoginDisplayName()) {
+    alert('請先 Lark 登入，存檔才會記錄申請人');
+  }
+  var data = validatePaymentForm();
+  if (!data) return;
+  savePaymentRecord(data).then(function(res) {
+    if (closePreview) cl('pp-prev');
+    alert(formatPaymentSaveMessage(res, false));
+  }).catch(function(err) {
+    console.error(err);
+    alert('存檔失敗：' + (err.message || '請稍後再試'));
+  });
+}
+
+function doPrint() {
+  var data = validatePaymentForm();
+  if (!data) return;
 
   triggerPaymentPrint();
 
   savePaymentRecord(data).then(function(res) {
     cl('pp-prev');
-    var msg = '已列印並存檔至多維表格！';
-    if (res && res.partialErrors && res.partialErrors.length) {
-      msg += '\n（部分寫入失敗：' + res.partialErrors.join('；') + '）';
-    }
-    if (res && res.notify) {
-      if (res.notify.mode === 'automation') {
-        msg += '\n（通知由 Lark 多維表格自動化發送）';
-      } else if (res.notify.skipped) {
-        msg += '\n（機器人通知未設定：請在 Vercel 設定 LARK_WEBHOOK_URL）';
-      } else if (!res.notify.ok) {
-        msg += '\n（機器人通知失敗：' + (res.notify.error || res.notify.reason || '請稍後再試') + '）';
-      }
-    }
-    alert(msg);
+    alert(formatPaymentSaveMessage(res, true));
   }).catch(function(err) {
     console.error(err);
     alert('已開啟列印，但存檔失敗：' + (err.message || '請稍後再試'));
@@ -2207,7 +2234,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260623q';
+var APP_BUILD = '20260623r';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
