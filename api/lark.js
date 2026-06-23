@@ -77,7 +77,9 @@ async function updateRecord(token, tableId, recordId, fields) {
     },
     body: JSON.stringify({ fields: fields })
   });
-  return await res.json();
+  const data = await res.json();
+  if (data.code !== 0) throw new Error(data.msg || 'update failed');
+  return data;
 }
 
 async function updateBitableRecord(token, appToken, tableId, recordId, fields) {
