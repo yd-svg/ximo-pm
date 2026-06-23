@@ -160,7 +160,10 @@ function formatArchiveCopyError(msg) {
     return '找不到知識庫頁面或範本。請確認封存位置與 LARK_WIKI_ARCHIVE_TEMPLATE 連結正確。';
   }
   if (/FieldNameNotFound/i.test(s)) {
-    return '範本欄位與後台不一致。請從現行後台複製最新範本並更新環境變數。';
+    if (/標案|projects|狀態|封存摘要/i.test(s)) {
+      return '後台標案表缺少部分欄位（如「封存摘要」或連結欄位），資料可能已寫入知識庫。請在後台將標案狀態改為「封存」。';
+    }
+    return '範本欄位與後台不一致。請從現行後台複製最新範本至知識庫並更新 LARK_WIKI_ARCHIVE_TEMPLATE。';
   }
   if (/Duplex Link|UserFieldConvFail|WrongRequestBody|Field types do not match|ConvFail/i.test(s)) {
     return s + '（欄位格式問題，請確認範本與後台結構一致後再封存）';
@@ -880,6 +883,10 @@ async function normalizeWriteFields(token, tableId, fields) {
       if (normalized) out[name] = normalized;
     }
   });
+  const allowed = schemas.allowedSet;
+  Object.keys(out).forEach(function(name) {
+    if (!allowed[name]) delete out[name];
+  });
   return out;
 }
 
@@ -1153,13 +1160,35 @@ async function archiveProject(token, projectId, wikiUrl, userAccessToken) {
 
   let finalWikiUrl = wikiUrl;
   let copyError = '';
+  let copiedToWiki = false;
   try {
     const copyResult = await copyProjectBundleToWikiBase(token, bundle, wikiUrl, userAccessToken);
     finalWikiUrl = copyResult.wikiUrl || wikiUrl;
+    copiedToWiki = true;
+  } catch (err) {
+    copyError = formatArchiveCopyError(err.message || String(err));
+    return {
+      ok: false,
+      projectName: name,
+      summary: summary,
+      counts: {
+        workitems: bundle.workitems.length,
+        tasks: bundle.tasks.length,
+        expenses: bundle.expenses.length,
+        designs: bundle.designs.length
+      },
+      copiedToWikiBase: false,
+      wikiUrl: wikiUrl,
+      copyError: copyError
+    };
+  }
 
+  let statusWarning = '';
+  let srcAllowed = null;
+  try {
     const srcFieldCache = {};
     const srcSchemas = await getTableFieldSchemas(token, APP_TOKEN, TABLES.projects, srcFieldCache);
-    const srcAllowed = srcSchemas.allowedSet;
+    srcAllowed = srcSchemas.allowedSet;
     const srcMeta = srcSchemas.fieldMeta;
     const safeUpdate = { '狀態': '封存', '封存摘要': summary };
     if (finalWikiUrl) {
@@ -1169,28 +1198,25 @@ async function archiveProject(token, projectId, wikiUrl, userAccessToken) {
       applyWikiUrlOverrides(safeUpdate, srcAllowed, srcMeta, normalizeWikiInputUrl(wikiUrl), ['Wiki存放位置']);
     }
     const normalizedUpdate = await normalizeWriteFields(token, TABLES.projects, safeUpdate);
-    await updateRecord(token, TABLES.projects, projectId, normalizedUpdate);
-
-    return {
-      ok: true,
-      projectName: name,
-      summary: summary,
-      counts: {
-        workitems: bundle.workitems.length,
-        tasks: bundle.tasks.length,
-        expenses: bundle.expenses.length,
-        designs: bundle.designs.length
-      },
-      copiedToWikiBase: true,
-      wikiUrl: finalWikiUrl,
-      wikiNote: '已封存至知識庫'
-    };
+    if (Object.keys(normalizedUpdate).length) {
+      await updateRecord(token, TABLES.projects, projectId, normalizedUpdate);
+    } else if (srcAllowed['狀態']) {
+      await updateRecord(token, TABLES.projects, projectId, { '狀態': '封存' });
+    }
   } catch (err) {
-    copyError = formatArchiveCopyError(err.message || String(err));
+    statusWarning = formatArchiveCopyError(err.message || String(err));
+    if (srcAllowed && srcAllowed['狀態']) {
+      try {
+        await updateRecord(token, TABLES.projects, projectId, { '狀態': '封存' });
+        statusWarning = '';
+      } catch (retryErr) {
+        statusWarning = formatArchiveCopyError(retryErr.message || String(retryErr));
+      }
+    }
   }
 
   return {
-    ok: false,
+    ok: true,
     projectName: name,
     summary: summary,
     counts: {
@@ -1199,9 +1225,9 @@ async function archiveProject(token, projectId, wikiUrl, userAccessToken) {
       expenses: bundle.expenses.length,
       designs: bundle.designs.length
     },
-    copiedToWikiBase: false,
-    wikiUrl: wikiUrl,
-    copyError: copyError
+    copiedToWikiBase: copiedToWiki,
+    wikiUrl: finalWikiUrl,
+    wikiNote: statusWarning ? '已封存至知識庫（狀態更新：' + statusWarning + '）' : '已封存至知識庫'
   };
 }
  
