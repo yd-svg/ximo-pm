@@ -164,6 +164,7 @@ function buildTables() {
 }
 
 const TABLES = buildTables();
+const PAYMENTS_TABLE_MAIN = (process.env.LARK_TABLE_PAYMENTS_MAIN || '').trim();
 const PAYMENTS_TABLE_ACCOUNTING = (process.env.LARK_TABLE_PAYMENTS_ACCOUNTING || '').trim();
 const ARCHIVE_OAUTH_SCOPES = 'wiki:wiki wiki:node:read bitable:app';
 
@@ -924,17 +925,46 @@ async function normalizeWriteFields(token, tableId, fields, appToken) {
   return out;
 }
 
+async function resolvePaymentsTableId(token, appToken, preferredId) {
+  const preferred = (preferredId || '').trim();
+  if (preferred) {
+    try {
+      const fields = await listBitableFields(token, appToken, preferred);
+      if (fields && fields.length) return preferred;
+    } catch (err) {
+      const msg = String(err.message || err);
+      if (msg.indexOf('TableIdNotFound') < 0 && msg.indexOf('NOTEXIST') < 0) throw err;
+    }
+  }
+  const tables = await listBitableTables(token, appToken);
+  const exactNames = ['付款金費單', '付款申請單', '付款申請'];
+  for (let i = 0; i < exactNames.length; i++) {
+    const hit = tables.find(function(t) { return t.name === exactNames[i]; });
+    if (hit && hit.table_id) return hit.table_id;
+  }
+  const fuzzy = tables.find(function(t) {
+    return t.name && (t.name.indexOf('付款') >= 0 || t.name.indexOf('金費') >= 0);
+  });
+  if (fuzzy && fuzzy.table_id) return fuzzy.table_id;
+  return preferred;
+}
+
 async function createPaymentInBothBases(tenantToken, userToken, rawFields) {
-  const tableId = TABLES.payments;
   const results = { main: null, accounting: null };
   const errors = [];
   const fields = Object.assign({}, rawFields || {});
   if (fields['狀態'] === undefined) fields['狀態'] = '待處理';
 
   try {
-    const mainBody = await normalizeWriteFields(tenantToken, tableId, fields, APP_TOKEN);
+    const mainTableId = await resolvePaymentsTableId(
+      tenantToken,
+      APP_TOKEN,
+      PAYMENTS_TABLE_MAIN || TABLES.payments
+    );
+    if (!mainTableId) throw new Error('找不到前台付款資料表');
+    const mainBody = await normalizeWriteFields(tenantToken, mainTableId, fields, APP_TOKEN);
     results.main = await writeWithUserFallback(tenantToken, userToken, function(tok, asUser) {
-      return createRecord(tok, tableId, mainBody, APP_TOKEN, asUser);
+      return createRecord(tok, mainTableId, mainBody, APP_TOKEN, asUser);
     });
   } catch (err) {
     errors.push('前台資料庫：' + (err.message || String(err)));
@@ -943,7 +973,12 @@ async function createPaymentInBothBases(tenantToken, userToken, rawFields) {
   const accAppToken = APP_TOKEN_PAYMENTS;
   if (accAppToken && accAppToken !== APP_TOKEN) {
     try {
-      const accTableId = PAYMENTS_TABLE_ACCOUNTING || tableId;
+      const accTableId = await resolvePaymentsTableId(
+        tenantToken,
+        accAppToken,
+        PAYMENTS_TABLE_ACCOUNTING || TABLES.payments
+      );
+      if (!accTableId) throw new Error('找不到會計付款資料表');
       const accBody = await normalizeWriteFields(tenantToken, accTableId, fields, accAppToken);
       results.accounting = await writeWithUserFallback(tenantToken, userToken, function(tok, asUser) {
         return createRecord(tok, accTableId, accBody, accAppToken, asUser);
@@ -1312,14 +1347,21 @@ async function archiveProject(token, projectId, wikiUrl, userAccessToken) {
 async function sendWebhook(text) {
   const url = process.env.LARK_WEBHOOK_URL;
   if (!url) return { ok: false, skipped: true, reason: 'LARK_WEBHOOK_URL not set' };
+  const keyword = (process.env.LARK_WEBHOOK_KEYWORD || '').trim();
+  let bodyText = String(text || '');
+  if (keyword && bodyText.indexOf(keyword) < 0) bodyText = keyword + '\n' + bodyText;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ msg_type: 'text', content: { text } })
+    body: JSON.stringify({ msg_type: 'text', content: { text: bodyText } })
   });
   const data = await res.json();
   if (data.StatusCode !== 0 && data.code !== 0) {
-    return { ok: false, error: data.msg || data.StatusMessage || 'webhook failed', raw: data };
+    const errMsg = data.msg || data.StatusMessage || 'webhook failed';
+    const hint = errMsg.indexOf('Key Words') >= 0
+      ? errMsg + '（請在 Vercel 設定 LARK_WEBHOOK_KEYWORD 為機器人關鍵字，或關閉機器人關鍵字驗證）'
+      : errMsg;
+    return { ok: false, error: hint, raw: data };
   }
   return { ok: true, raw: data };
 }
@@ -1737,6 +1779,9 @@ export default async function handler(req, res) {
           hasAppToken: !!APP_TOKEN,
           hasAppTokenPayments: !!APP_TOKEN_PAYMENTS,
           hasWebhook: !!process.env.LARK_WEBHOOK_URL,
+          hasWebhookKeyword: !!process.env.LARK_WEBHOOK_KEYWORD,
+          paymentsTableMain: PAYMENTS_TABLE_MAIN || TABLES.payments,
+          paymentsTableAccounting: PAYMENTS_TABLE_ACCOUNTING || TABLES.payments,
           siteUrl: (process.env.SITE_URL || '').trim(),
           appIdLen: APP_ID ? APP_ID.length : 0,
           appSecretLen: APP_SECRET ? APP_SECRET.length : 0,
