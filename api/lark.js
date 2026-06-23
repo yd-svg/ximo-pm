@@ -1404,20 +1404,39 @@ function namesMatch(a, b) {
   return a.indexOf(b) >= 0 || b.indexOf(a) >= 0;
 }
 
+function collectPersonFromValue(val, ids, names) {
+  if (!val) return;
+  if (typeof val === 'string' && val.trim()) {
+    names.push(val.trim());
+    return;
+  }
+  const items = Array.isArray(val) ? val : [val];
+  items.forEach(function(x) {
+    if (!x) return;
+    if (typeof x === 'string' && x.trim()) names.push(x.trim());
+    if (x.id) ids.push(String(x.id).trim());
+    if (x.open_id) ids.push(String(x.open_id).trim());
+    if (x.user_id) ids.push(String(x.user_id).trim());
+    if (x.union_id) ids.push(String(x.union_id).trim());
+    if (x.name) names.push(String(x.name).trim());
+    if (x.en_name) names.push(String(x.en_name).trim());
+    if (x.enName) names.push(String(x.enName).trim());
+  });
+}
+
 function listMemberPersonIds(fields) {
   const ids = [];
-  const keys = ['成員', '姓名', '名稱', '人員', 'Member'];
-  keys.forEach(function(k) {
-    const p = fields[k];
-    if (!p) return;
-    const items = Array.isArray(p) ? p : [p];
-    items.forEach(function(x) {
-      if (!x) return;
-      if (typeof x === 'string' && x) ids.push(String(x).trim());
-      else if (x.id) ids.push(String(x.id).trim());
-      else if (x.open_id) ids.push(String(x.open_id).trim());
-      else if (x.user_id) ids.push(String(x.user_id).trim());
-    });
+  const names = [];
+  const priorityKeys = ['帳號', '成員', '姓名', '名稱', '人員', 'Member', 'Account'];
+  priorityKeys.forEach(function(k) { collectPersonFromValue(fields[k], ids, names); });
+  Object.keys(fields || {}).forEach(function(k) {
+    const v = fields[k];
+    if (!v) return;
+    if (Array.isArray(v) && v[0] && (v[0].id || v[0].open_id || v[0].name)) {
+      collectPersonFromValue(v, ids, names);
+    } else if (v && typeof v === 'object' && !Array.isArray(v) && (v.id || v.open_id || v.name)) {
+      collectPersonFromValue(v, ids, names);
+    }
   });
   const extra = fieldTextValue(fields['open_id'] || fields['Open ID'] || fields['user_id'] || fields['User ID'] || fields['userid']);
   if (extra) ids.push(extra);
@@ -1426,25 +1445,15 @@ function listMemberPersonIds(fields) {
 
 function listMemberPersonNames(fields) {
   const names = [];
-  const keys = ['成員', '姓名', '名稱', '人員', 'Member'];
-  keys.forEach(function(k) {
-    const p = fields[k];
-    if (!p) return;
-    if (typeof p === 'string' && p.trim()) {
-      names.push(p.trim());
-      return;
-    }
-    const items = Array.isArray(p) ? p : [p];
-    items.forEach(function(x) {
-      if (!x) return;
-      if (typeof x === 'string' && x.trim()) names.push(x.trim());
-      if (x.name) names.push(String(x.name).trim());
-      if (x.en_name) names.push(String(x.en_name).trim());
-      if (x.enName) names.push(String(x.enName).trim());
-    });
+  const ids = [];
+  const priorityKeys = ['帳號', '成員', '姓名', '名稱', '人員', 'Member', 'Account', '顯示名稱'];
+  priorityKeys.forEach(function(k) { collectPersonFromValue(fields[k], ids, names); });
+  Object.keys(fields || {}).forEach(function(k) {
+    const v = fields[k];
+    if (!v) return;
+    if (Array.isArray(v) && v[0] && (v[0].id || v[0].name)) collectPersonFromValue(v, ids, names);
+    else if (v && typeof v === 'object' && !Array.isArray(v) && (v.id || v.name)) collectPersonFromValue(v, ids, names);
   });
-  const text = fieldTextValue(fields['姓名'] || fields['名稱'] || fields['顯示名稱']);
-  if (text) names.push(text);
   return names.filter(Boolean);
 }
 
@@ -1466,12 +1475,14 @@ function getMemberRole(fields) {
 
 function findMemberForUser(members, user) {
   const openId = String(user.openId || '').trim();
+  const unionId = String(user.unionId || '').trim();
   const userId = String(user.userId || '').trim();
   const userNames = [user.name, user.enName].map(function(s) { return String(s || '').trim(); }).filter(Boolean);
   for (let i = 0; i < members.length; i++) {
     const f = members[i].fields || {};
     const personIds = listMemberPersonIds(f);
     if (openId && personIds.some(function(id) { return id === openId; })) return members[i];
+    if (unionId && personIds.some(function(id) { return id === unionId; })) return members[i];
     const mUserId = fieldTextValue(f['user_id'] || f['User ID'] || f['userid']);
     if (userId && mUserId && userId === mUserId) return members[i];
     const mNames = listMemberPersonNames(f);
@@ -1512,7 +1523,8 @@ async function getUserInfoFromToken(userAccessToken) {
     name: u.name || u.en_name || '',
     enName: u.en_name || '',
     openId: u.open_id || '',
-    userId: u.user_id || ''
+    userId: u.user_id || '',
+    unionId: u.union_id || ''
   };
 }
 

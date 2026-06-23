@@ -478,13 +478,27 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .undo-toast.show{opacity:1;pointer-events:auto}
 .undo-btn{padding:4px 10px;border-radius:var(--rs);border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;font-size:11px;font-weight:600;cursor:pointer}
 .undo-btn:hover{background:rgba(255,255,255,.22)}
-.auth-gate{position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
+.auth-gate{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(165deg,#f3f0ea 0%,#e6e0d6 45%,#f7f4ef 100%)}
 .auth-gate.hidden{display:none}
-.auth-gate-box{text-align:center;max-width:360px;padding:32px 24px;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow)}
-.auth-gate-box .logo{font-size:22px;margin-bottom:20px}
-.auth-gate-msg{font-size:14px;color:var(--t2);line-height:1.6;margin-bottom:8px}
-.auth-gate-sub{font-size:12px;color:var(--t3);margin-bottom:16px;line-height:1.6;white-space:pre-line}
-.auth-gate-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.auth-gate-card{width:100%;max-width:420px;background:var(--surface);border-radius:16px;border:1px solid rgba(226,221,216,.9);box-shadow:0 12px 48px rgba(26,25,22,.1),0 1px 0 rgba(255,255,255,.9) inset;overflow:hidden}
+.auth-gate-brand{padding:28px 32px 22px;text-align:center;background:linear-gradient(180deg,#fff 0%,#faf8f5 100%);border-bottom:1px solid var(--border)}
+.auth-gate-brand .logo{font-size:28px;font-weight:700;letter-spacing:8px;margin:0;line-height:1.2}
+.auth-gate-brand .tagline{font-size:11px;color:var(--t3);margin-top:10px;letter-spacing:.5px}
+.auth-gate-body{padding:28px 32px 32px;text-align:center}
+.auth-gate-icon{width:52px;height:52px;border-radius:50%;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;font-size:24px;line-height:1}
+.auth-gate-icon.state-loading{background:#f4f1ec;color:var(--t2);animation:authPulse 1.4s ease-in-out infinite}
+.auth-gate-icon.state-login{background:linear-gradient(135deg,#e8f5ee,#d4ebe0);color:var(--c1)}
+.auth-gate-icon.state-denied{background:linear-gradient(135deg,#fef2f2,#fde8e8);color:var(--danger)}
+@keyframes authPulse{0%,100%{opacity:.55;transform:scale(.96)}50%{opacity:1;transform:scale(1)}}
+.auth-gate-msg{font-size:16px;font-weight:600;color:var(--text);margin-bottom:12px;line-height:1.45}
+.auth-gate-user{display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:14px;background:var(--sf2);border:1px solid var(--border);border-radius:var(--rs);text-align:left}
+.auth-gate-user-dot{width:40px;height:40px;border-radius:50%;background:linear-gradient(145deg,#e8a04a,#c96d28);color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(201,109,40,.25)}
+.auth-gate-user-name{font-size:13px;font-weight:600;color:var(--text);line-height:1.3}
+.auth-gate-user-hint{font-size:11px;color:var(--t3);margin-top:2px;line-height:1.4}
+.auth-gate-sub{font-size:12px;color:var(--t2);line-height:1.65;white-space:pre-line;margin-bottom:20px;padding:12px 14px;background:var(--sf2);border-radius:var(--rs);border:1px solid var(--border);text-align:left}
+.auth-gate-actions{display:flex;flex-direction:column;gap:10px;align-items:center}
+.auth-gate-actions .bpri{width:100%;max-width:280px;padding:12px 20px;font-size:13px;border-radius:var(--rs)}
+.auth-gate-actions .bcan{width:100%;max-width:280px;padding:11px 20px;border-radius:var(--rs)}
 body.role-designer #lp,body.role-designer #rp,body.role-designer #tl,body.role-designer #tr{display:none!important}
 button:disabled,.bpri:disabled,.bsub:disabled,.bsub2:disabled,.bsm:disabled,.bdel:disabled,.confirm-ok:disabled{opacity:.5;cursor:not-allowed;pointer-events:none}
 button.btn-loading::after{content:'…';margin-left:2px}
@@ -493,13 +507,26 @@ button.btn-loading::after{content:'…';margin-left:2px}
 <body>
 
 <div id="auth-gate" class="auth-gate">
-  <div class="auth-gate-box">
-    <div class="logo">璽墨</div>
-    <div class="auth-gate-msg" id="auth-gate-msg">驗證登入中…</div>
-    <div class="auth-gate-sub" id="auth-gate-sub" style="font-size:12px;color:var(--t3);margin-bottom:16px;line-height:1.5"></div>
-    <div class="auth-gate-actions">
-      <button type="button" class="bpri" id="auth-gate-login" style="display:none" onclick="startBrowserLarkLogin()">請登入 Lark</button>
-      <button type="button" class="bcan" id="auth-gate-logout" style="display:none" onclick="logoutAndShowGate()">登出重新登入</button>
+  <div class="auth-gate-card">
+    <div class="auth-gate-brand">
+      <div class="logo">璽墨</div>
+      <div class="tagline">專案管理系統</div>
+    </div>
+    <div class="auth-gate-body">
+      <div class="auth-gate-icon state-loading" id="auth-gate-icon">◎</div>
+      <div class="auth-gate-msg" id="auth-gate-msg">驗證登入中…</div>
+      <div class="auth-gate-user" id="auth-gate-user" style="display:none">
+        <div class="auth-gate-user-dot" id="auth-gate-user-dot">?</div>
+        <div>
+          <div class="auth-gate-user-name" id="auth-gate-user-name"></div>
+          <div class="auth-gate-user-hint">Lark 帳號</div>
+        </div>
+      </div>
+      <div class="auth-gate-sub" id="auth-gate-sub" style="display:none"></div>
+      <div class="auth-gate-actions">
+        <button type="button" class="bpri" id="auth-gate-login" style="display:none" onclick="startBrowserLarkLogin()">使用 Lark 登入</button>
+        <button type="button" class="bcan" id="auth-gate-logout" style="display:none" onclick="logoutAndShowGate()">登出並重新登入</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2235,16 +2262,42 @@ function formatLoginDisplayName(user) {
   return parts.join(' / ');
 }
 
-function showAuthGate(state, msg, sub) {
+function showAuthGate(state, msg, sub, loginUser) {
   var gate = document.getElementById('auth-gate');
+  var iconEl = document.getElementById('auth-gate-icon');
   var msgEl = document.getElementById('auth-gate-msg');
   var subEl = document.getElementById('auth-gate-sub');
+  var userBox = document.getElementById('auth-gate-user');
+  var userDot = document.getElementById('auth-gate-user-dot');
+  var userNameEl = document.getElementById('auth-gate-user-name');
   var loginBtn = document.getElementById('auth-gate-login');
   var logoutBtn = document.getElementById('auth-gate-logout');
   if (!gate) return;
   gate.classList.remove('hidden');
   if (msgEl) msgEl.textContent = msg || '';
-  if (subEl) subEl.textContent = sub || '';
+  if (iconEl) {
+    iconEl.className = 'auth-gate-icon state-' + (state === 'denied' ? 'denied' : state === 'login' ? 'login' : 'loading');
+    iconEl.textContent = state === 'denied' ? '!' : state === 'login' ? '→' : '◎';
+  }
+  var who = formatLoginDisplayName(loginUser);
+  if (userBox && userNameEl && userDot) {
+    if (state === 'denied' && who) {
+      userBox.style.display = 'flex';
+      userNameEl.textContent = who;
+      userDot.textContent = who.charAt(0).toUpperCase();
+    } else {
+      userBox.style.display = 'none';
+    }
+  }
+  if (subEl) {
+    if (sub) {
+      subEl.style.display = 'block';
+      subEl.textContent = sub;
+    } else {
+      subEl.style.display = 'none';
+      subEl.textContent = '';
+    }
+  }
   if (loginBtn) loginBtn.style.display = state === 'login' ? '' : 'none';
   if (logoutBtn) logoutBtn.style.display = state === 'denied' ? '' : 'none';
 }
@@ -2260,7 +2313,7 @@ function logoutAndShowGate() {
   loginUserReady = false;
   try { sessionStorage.removeItem('ximo-login-user'); } catch (e) {}
   document.body.classList.remove('role-designer');
-  showAuthGate('login', '請登入 Lark', '璽墨專案管理系統');
+  showAuthGate('login', '請登入以繼續', '', null);
 }
 
 function withUserToken(payload) {
