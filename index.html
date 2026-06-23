@@ -2234,7 +2234,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260623r';
+var APP_BUILD = '20260623s';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
@@ -5328,6 +5328,8 @@ function savePaymentRecord(data) {
   var applicantPerson = getLoginLarkPerson();
   if (applicantPerson) fields['申請人'] = applicantPerson;
   else if (data.applicant) fields['申請人'] = data.applicant;
+  var loginUser = getCurrentLoginUser();
+  if (loginUser && loginUser.openId) fields.applicantOpenId = loginUser.openId;
   return fetch(API + '?table=payments', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

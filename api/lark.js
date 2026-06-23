@@ -734,8 +734,11 @@ function normalizePersonFieldValue(val) {
   const out = [];
   items.forEach(function(x) {
     if (!x) return;
-    if (typeof x === 'string' && x) out.push({ id: String(x) });
-    else if (x && x.id) out.push({ id: String(x.id) });
+    if (typeof x === 'string' && x) {
+      if (/^ou_/i.test(x) || /^on_/i.test(x)) out.push({ id: String(x) });
+      return;
+    }
+    if (x && x.id) out.push({ id: String(x.id) });
     else if (x && x.open_id) out.push({ id: String(x.open_id) });
     else if (x && x.user_id) out.push({ id: String(x.user_id) });
   });
@@ -938,10 +941,23 @@ async function normalizeWriteFields(token, tableId, fields, appToken) {
   const meta = schemas.fieldMeta;
   const allowed = schemas.allowedSet;
   const out = {};
-  Object.keys(fields).forEach(function(name) {
+  const paymentAliases = {
+    '申請人': ['申請人員', 'Applicant', '申请人']
+  };
+  const src = Object.assign({}, fields);
+  Object.keys(paymentAliases).forEach(function(canonical) {
+    if (allowed[canonical]) return;
+    paymentAliases[canonical].forEach(function(alt) {
+      if (allowed[alt] && src[canonical] !== undefined && src[alt] === undefined) {
+        src[alt] = src[canonical];
+        delete src[canonical];
+      }
+    });
+  });
+  Object.keys(src).forEach(function(name) {
     if (!allowed[name]) return;
     const m = meta[name];
-    const val = fields[name];
+    const val = src[name];
     if (!m) {
       out[name] = val;
       return;
@@ -950,6 +966,42 @@ async function normalizeWriteFields(token, tableId, fields, appToken) {
     if (normalized !== null && normalized !== undefined) out[name] = normalized;
   });
   return out;
+}
+
+async function enrichPaymentApplicant(tenantToken, userToken, fields, hintOpenId) {
+  let openId = String(hintOpenId || '').trim();
+  if (!openId && userToken) {
+    try {
+      const u = await getUserInfoFromToken(userToken);
+      openId = String(u.open_id || u.openId || '').trim();
+    } catch (e) {}
+  }
+  const raw = fields['申請人'];
+  if (!openId && Array.isArray(raw) && raw[0] && raw[0].id) {
+    const rid = String(raw[0].id);
+    if (/^ou_/i.test(rid) || /^on_/i.test(rid)) openId = rid;
+  }
+  if (!openId) {
+    const name = typeof raw === 'string' ? raw.trim() : paymentApplicantText(fields);
+    if (name) {
+      const members = await getRecords(tenantToken, TABLES.members);
+      for (let i = 0; i < members.length; i++) {
+        const mf = members[i].fields || {};
+        const mn = getMemberName(mf);
+        if (mn && namesMatch(mn, name)) {
+          openId = getMemberPersonOpenId(mf);
+          if (openId) break;
+        }
+      }
+    }
+  }
+  if (openId) {
+    fields['申請人'] = [{ id: openId }];
+  } else {
+    const name = typeof raw === 'string' ? raw.trim() : paymentApplicantText(fields);
+    if (name) fields['申請人'] = name;
+  }
+  return fields;
 }
 
 async function resolvePaymentsTableId(token, appToken, preferredId) {
@@ -976,11 +1028,12 @@ async function resolvePaymentsTableId(token, appToken, preferredId) {
   return preferred;
 }
 
-async function createPaymentInBothBases(tenantToken, userToken, rawFields) {
+async function createPaymentInBothBases(tenantToken, userToken, rawFields, applicantOpenIdHint) {
   const results = { main: null, accounting: null };
   const errors = [];
   const fields = Object.assign({}, rawFields || {});
   if (fields['狀態'] === undefined) fields['狀態'] = '待處理';
+  await enrichPaymentApplicant(tenantToken, userToken, fields, applicantOpenIdHint);
 
   const frontCfg = paymentsFrontConfig();
   try {
@@ -1713,7 +1766,13 @@ function stripAuthFromBody(body) {
   const out = Object.assign({}, body || {});
   delete out.userAccessToken;
   delete out.user_access_token;
+  delete out.applicantOpenId;
   return out;
+}
+
+function extractApplicantOpenIdHint(body) {
+  const b = body || {};
+  return String(b.applicantOpenId || b.applicant_open_id || '').trim();
 }
 
 async function getUserInfoFromToken(userAccessToken) {
@@ -1917,9 +1976,10 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       if (!TABLES[table]) return res.status(400).json({ error: 'Invalid table' });
+      const applicantHint = extractApplicantOpenIdHint(req.body);
       const cleanBody = stripAuthFromBody(req.body || {});
       if (table === 'payments') {
-        const result = await createPaymentInBothBases(tenantToken, userAccessToken, cleanBody);
+        const result = await createPaymentInBothBases(tenantToken, userAccessToken, cleanBody, applicantHint);
         try {
           result.notify = await maybeSendPaymentNotify(cleanBody);
         } catch (notifyErr) {
