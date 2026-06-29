@@ -4081,8 +4081,13 @@ function getWiProgressPct(wf, wiId) {
 }
 
 function formatWeightProgress(wf, wiId) {
+  var w = formatPct(wf && wf['權重']);
   var n = getWiWeightedContribPct(wf);
-  return n != null ? (n + '%') : '';
+  var p = n != null ? (n + '%') : '';
+  if (w && p) return w + '/' + p;
+  if (w) return w + '/—';
+  if (p) return '—/' + p;
+  return '';
 }
 
 function getProjectNameFromWi(wi) {
