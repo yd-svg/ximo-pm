@@ -2460,7 +2460,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v18';
+var APP_BUILD = '20260615v19';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
@@ -3568,14 +3568,39 @@ function formatWeight(val) {
   return formatPct(val);
 }
 
+// Lark 公式：IF([設計平均進度], ([任務平均進度]+[設計平均進度])/200, [任務平均進度]/100)
+function parseAvgProgressField(val) {
+  if (val === '' || val == null) return null;
+  var n = typeof val === 'number' ? val : parseFloat(String(val).replace(/[^0-9.-]/g, ''));
+  if (isNaN(n)) return null;
+  if (n > 0 && n <= 1) return n * 100;
+  return n;
+}
+
+function calcWeightedProgressPct(wf) {
+  if (!wf) return null;
+  var taskAvg = parseAvgProgressField(wf['任務平均進度']);
+  var designAvg = parseAvgProgressField(wf['設計平均進度']);
+  if (designAvg != null && designAvg > 0) {
+    var t = taskAvg != null ? taskAvg : 0;
+    return Math.min(100, Math.round((t + designAvg) / 2));
+  }
+  if (taskAvg != null) return Math.min(100, Math.round(taskAvg));
+  var raw = wf['加權進度'];
+  if (raw !== '' && raw != null) {
+    var n = typeof raw === 'number' ? raw : parseFloat(String(raw).replace(/[^0-9.-]/g, ''));
+    if (!isNaN(n)) {
+      if (n > 0 && n <= 1) return Math.min(100, Math.round(n * 100));
+      if (n <= 100) return Math.round(n);
+    }
+  }
+  return null;
+}
+
 function getWiProgressPct(wf, wiId) {
   if (!wf) return '';
-  var p = formatPct(wf['加權進度']);
-  if (p) return p;
-  p = formatPct(wf['任務平均進度']);
-  if (p) return p;
-  p = formatPct(wf['設計平均進度']);
-  if (p) return p;
+  var computed = calcWeightedProgressPct(wf);
+  if (computed != null) return computed + '%';
   if (!wiId) return '';
   var sum = 0, count = 0;
   tasksData.forEach(function(t) {
@@ -4482,7 +4507,7 @@ function getBlockReasonForDesign(rec, desId) {
 function getTodayJournalDesignCategory(desId, author) {
   var today = new Date();
   today.setHours(0, 0, 0, 0);
-  var existing = findDailyJournalRecord(today.getTime(), author);
+  var existing = findDailyJournalRecord(today.getTime(), author, desId, 'design');
   if (!existing) return 'doing';
   var catMap = getExistingDesignCategories(existing);
   return catMap[desId] || 'doing';
@@ -4508,6 +4533,7 @@ function pickDesignReportCat(el) {
   document.querySelectorAll('#dd-cats .td-cat').forEach(function(c) { c.classList.remove('active'); });
   el.classList.add('active');
   designReportCategory = el.dataset.cat || 'doing';
+  syncReportStatusSelect('dd-status', designReportCategory);
   toggleDdBlockReason();
 }
 
@@ -4575,13 +4601,16 @@ function confirmDesignReport() {
   var today = new Date();
   today.setHours(0, 0, 0, 0);
   var todayStart = today.getTime();
-  var existingJournal = findDailyJournalRecord(todayStart, author);
+  var existingJournal = findDailyJournalRecord(todayStart, author, currentDesignId, 'design');
   var existingReasons = parseDesignCategories(existingJournal).blockReasons || {};
 
   if (category === 'block' && !blockReason && !existingReasons[currentDesignId]) {
     alert('分類為卡關時，請填寫卡關原因');
     return;
   }
+
+  status = normalizeReportStatusForCategory(status, category);
+  syncReportStatusSelect('dd-status', category);
 
   var merged = mergeDesignIntoJournalCategories(existingJournal, currentDesignId, category);
   if (category === 'block' && blockReason) merged.blockReasons[currentDesignId] = blockReason;
@@ -4709,7 +4738,25 @@ function pickTaskReportCat(el) {
   document.querySelectorAll('#td-cats .td-cat').forEach(function(c) { c.classList.remove('active'); });
   el.classList.add('active');
   taskReportCategory = el.dataset.cat || 'doing';
+  syncReportStatusSelect('td-status', taskReportCategory);
   toggleTdBlockReason();
+}
+
+function normalizeReportStatusForCategory(status, category) {
+  if (category === 'done') return '已完成';
+  if (category === 'doing' || category === 'block' || category === 'tomorrow') {
+    if (status === '已完成' || parseProgressVal(status, null) >= 100) return '進行中90%';
+  }
+  return status;
+}
+
+function syncReportStatusSelect(selectId, category) {
+  var sel = document.getElementById(selectId);
+  if (!sel || !sel.options.length) return;
+  var status = normalizeReportStatusForCategory(sel.value, category);
+  for (var i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === status) { sel.selectedIndex = i; return; }
+  }
 }
 
 function toggleTdBlockReason() {
@@ -4720,7 +4767,7 @@ function toggleTdBlockReason() {
 function getTodayJournalCategory(taskId, author) {
   var today = new Date();
   today.setHours(0, 0, 0, 0);
-  var existing = findDailyJournalRecord(today.getTime(), author);
+  var existing = findDailyJournalRecord(today.getTime(), author, taskId, 'task');
   if (!existing) return 'doing';
   var catMap = getExistingTaskCategories(existing);
   return catMap[taskId] || 'doing';
@@ -4755,7 +4802,7 @@ function confirmTaskReport() {
   var today = new Date();
   today.setHours(0, 0, 0, 0);
   var todayStart = today.getTime();
-  var existingJournal = findDailyJournalRecord(todayStart, author);
+  var existingJournal = findDailyJournalRecord(todayStart, author, currentTaskId, 'task');
   var existingReasonMap = parseBlockReasons(existingJournal);
   var reasonById = {};
   Object.keys(existingReasonMap.byId).forEach(function(k) { reasonById[k] = existingReasonMap.byId[k]; });
@@ -4764,6 +4811,9 @@ function confirmTaskReport() {
     alert('分類為卡關時，請填寫卡關原因');
     return;
   }
+
+  status = normalizeReportStatusForCategory(status, category);
+  syncReportStatusSelect('td-status', category);
 
   var merged = mergeTaskIntoJournalCategories(existingJournal, currentTaskId, category);
   if (category === 'block' && blockReason) reasonById[currentTaskId] = blockReason;
@@ -5503,17 +5553,38 @@ function applyDailyLogPermissions() {
   if (saveBtn) saveBtn.style.display = pm ? '' : 'none';
 }
 
-function findDailyJournalRecord(dayStart, authorName) {
+function journalContainsTask(rec, taskId) {
+  if (!rec || !taskId) return false;
+  var f = rec.fields || {};
+  var keys = ['進行中任務', '已完成今日任務', '卡關任務', '明日預計任務'];
+  for (var i = 0; i < keys.length; i++) {
+    if (getLinkIds(f[keys[i]]).indexOf(taskId) >= 0) return true;
+  }
+  return false;
+}
+
+function journalContainsDesign(rec, desId) {
+  if (!rec || !desId) return false;
+  var cats = parseDesignCategories(rec);
+  return cats.doing.indexOf(desId) >= 0 || cats.done.indexOf(desId) >= 0
+    || cats.block.indexOf(desId) >= 0 || cats.tomorrow.indexOf(desId) >= 0;
+}
+
+function findDailyJournalRecord(dayStart, authorName, itemId, itemKind) {
   var dayEnd = dayStart + 86400000;
   var matches = journalData.filter(function(rec) {
     var ts = journalTs(rec);
     if (!ts || ts < dayStart || ts >= dayEnd) return false;
-    if (!authorName || authorName === '（未指定）') return true;
-    return journalPersonName(rec) === authorName;
+    if (authorName && authorName !== '（未指定）' && journalPersonName(rec) !== authorName) return false;
+    return true;
   });
-  if (!matches.length) return null;
-  if (!authorName || authorName === '（未指定）') return matches[0];
-  return matches[0];
+  if (itemId && matches.length) {
+    var containsFn = itemKind === 'design' ? journalContainsDesign : journalContainsTask;
+    for (var i = 0; i < matches.length; i++) {
+      if (containsFn(matches[i], itemId)) return matches[i];
+    }
+  }
+  return matches.length ? matches[0] : null;
 }
 
 function saveDailyJournal() {
@@ -5878,6 +5949,14 @@ function resolveBlockedTask(taskId, journalRecId, newCat, btn) {
       var status = ctx.f['進度狀態'] || '';
       if (String(status).indexOf('100') < 0) {
         taskUpdate = apiPut('tasks', taskId, { '進度狀態': '進行中100%', '進度數值': 100 });
+      }
+    }
+  } else if (newCat === 'doing' || newCat === 'tomorrow') {
+    var ctx2 = getTaskContext(taskId);
+    if (ctx2) {
+      var st = ctx2.f['進度狀態'] || '';
+      if (st === '已完成' || parseProgressVal(st, null) >= 100) {
+        taskUpdate = apiPut('tasks', taskId, { '進度狀態': '進行中90%', '進度數值': 90 });
       }
     }
   }
