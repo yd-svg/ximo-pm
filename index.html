@@ -885,7 +885,7 @@ button.btn-loading::after{content:'…';margin-left:2px}
     <span class="td-cat block" data-cat="block" onclick="pickTaskReportCat(this)">卡關</span>
     <span class="td-cat" data-cat="tomorrow" onclick="pickTaskReportCat(this)">明日預計</span>
   </div></div>
-  <div class="fg"><label>進度狀態</label><select id="td-status"></select></div>
+  <div class="fg"><label>進度狀態</label><select id="td-status" onchange="onTaskReportStatusChange()"></select></div>
   <div class="fg"><label>補充說明</label><textarea id="td-note" rows="3" placeholder="寫進今日回報的補充說明…"></textarea></div>
   <div class="fg td-block-box" id="td-block-wrap" style="display:none"><label>卡關原因</label><textarea id="td-block-reason" rows="2" placeholder="說明卡在哪、需要誰協助…"></textarea></div>
   <button class="bads" style="margin-top:4px" onclick="openNewTaskFromContext()">＋ 建立新任務</button>
@@ -905,7 +905,7 @@ button.btn-loading::after{content:'…';margin-left:2px}
     <span class="td-cat block" data-cat="block" onclick="pickDesignReportCat(this)">卡關</span>
     <span class="td-cat" data-cat="tomorrow" onclick="pickDesignReportCat(this)">明日預計</span>
   </div></div>
-  <div class="fg"><label>進度狀態</label><select id="dd-status"></select></div>
+  <div class="fg"><label>進度狀態</label><select id="dd-status" onchange="onDesignReportStatusChange()"></select></div>
   <div class="fg"><label>補充說明</label><textarea id="dd-note" rows="3" placeholder="寫進今日回報的補充說明…"></textarea></div>
   <div class="fg dd-block-box" id="dd-block-wrap" style="display:none"><label>卡關原因</label><textarea id="dd-block-reason" rows="2" placeholder="說明卡在哪、需要誰協助…"></textarea></div>
   <button class="bads" style="margin-top:4px" onclick="openNewDesignFromContext()">＋ 建立新設計任務</button>
@@ -2460,7 +2460,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v19';
+var APP_BUILD = '20260615v20';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
@@ -4530,11 +4530,23 @@ function mergeDesignIntoJournalCategories(existing, desId, category) {
 }
 
 function pickDesignReportCat(el) {
-  document.querySelectorAll('#dd-cats .td-cat').forEach(function(c) { c.classList.remove('active'); });
-  el.classList.add('active');
-  designReportCategory = el.dataset.cat || 'doing';
+  setDesignReportCategory(el.dataset.cat || 'doing');
+}
+
+function setDesignReportCategory(cat) {
+  designReportCategory = cat || 'doing';
+  document.querySelectorAll('#dd-cats .td-cat').forEach(function(c) {
+    c.classList.toggle('active', c.dataset.cat === designReportCategory);
+  });
   syncReportStatusSelect('dd-status', designReportCategory);
   toggleDdBlockReason();
+}
+
+function onDesignReportStatusChange() {
+  var sel = document.getElementById('dd-status');
+  if (!sel) return;
+  if (sel.value === '已完成') setDesignReportCategory('done');
+  else if (designReportCategory === 'done') setDesignReportCategory('doing');
 }
 
 function toggleDdBlockReason() {
@@ -4578,6 +4590,7 @@ function openDesignDetail(desId) {
   sel.innerHTML = PROGRESS_OPTIONS.map(function(o) {
     return '<option' + (o === (ctx.f['進度狀態'] || '') ? ' selected' : '') + '>' + o + '</option>';
   }).join('');
+  syncReportStatusSelect('dd-status', designReportCategory);
   document.getElementById('dd-note').value = ctx.f['備註'] || '';
   var today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -4609,8 +4622,14 @@ function confirmDesignReport() {
     return;
   }
 
-  status = normalizeReportStatusForCategory(status, category);
+  if (status === '已完成' || parseProgressVal(status, null) >= 100) category = 'done';
+  if (category === 'done') {
+    status = '已完成';
+  } else {
+    status = normalizeReportStatusForCategory(status, category);
+  }
   syncReportStatusSelect('dd-status', category);
+  setDesignReportCategory(category);
 
   var merged = mergeDesignIntoJournalCategories(existingJournal, currentDesignId, category);
   if (category === 'block' && blockReason) merged.blockReasons[currentDesignId] = blockReason;
@@ -4735,11 +4754,23 @@ function openDesignForProject(projId) {
 }
 
 function pickTaskReportCat(el) {
-  document.querySelectorAll('#td-cats .td-cat').forEach(function(c) { c.classList.remove('active'); });
-  el.classList.add('active');
-  taskReportCategory = el.dataset.cat || 'doing';
+  setTaskReportCategory(el.dataset.cat || 'doing');
+}
+
+function setTaskReportCategory(cat) {
+  taskReportCategory = cat || 'doing';
+  document.querySelectorAll('#td-cats .td-cat').forEach(function(c) {
+    c.classList.toggle('active', c.dataset.cat === taskReportCategory);
+  });
   syncReportStatusSelect('td-status', taskReportCategory);
   toggleTdBlockReason();
+}
+
+function onTaskReportStatusChange() {
+  var sel = document.getElementById('td-status');
+  if (!sel) return;
+  if (sel.value === '已完成') setTaskReportCategory('done');
+  else if (taskReportCategory === 'done') setTaskReportCategory('doing');
 }
 
 function normalizeReportStatusForCategory(status, category) {
@@ -4812,8 +4843,14 @@ function confirmTaskReport() {
     return;
   }
 
-  status = normalizeReportStatusForCategory(status, category);
+  if (status === '已完成' || parseProgressVal(status, null) >= 100) category = 'done';
+  if (category === 'done') {
+    status = '已完成';
+  } else {
+    status = normalizeReportStatusForCategory(status, category);
+  }
   syncReportStatusSelect('td-status', category);
+  setTaskReportCategory(category);
 
   var merged = mergeTaskIntoJournalCategories(existingJournal, currentTaskId, category);
   if (category === 'block' && blockReason) reasonById[currentTaskId] = blockReason;
@@ -4961,6 +4998,7 @@ function openTaskDetail(taskId) {
   sel.innerHTML = PROGRESS_OPTIONS.map(function(o) {
     return '<option' + (o === (ctx.f['進度狀態'] || '') ? ' selected' : '') + '>' + o + '</option>';
   }).join('');
+  syncReportStatusSelect('td-status', taskReportCategory);
   document.getElementById('td-note').value = ctx.f['備註'] || '';
   var today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -5211,6 +5249,20 @@ function onDailyLogCatChange(sel) {
     var blockInput = row.querySelector('.dl-block-reason');
     if (blockInput) blockInput.style.display = sel.value === 'block' ? 'block' : 'none';
     row.classList.toggle('dl-row-unlisted', !sel.value);
+    var progEl = row.querySelector('.dl-progress');
+    if (progEl) {
+      if (sel.value === 'done') progEl.textContent = '100%';
+      else if (sel.value === 'doing' || sel.value === 'block' || sel.value === 'tomorrow') {
+        var kind = row.dataset.kind || 'task';
+        var id = kind === 'design' ? row.dataset.designId : row.dataset.taskId;
+        var ctx = kind === 'design' ? getDesignContext(id) : getTaskContext(id);
+        if (ctx) {
+          var st = ctx.f['進度狀態'] || '';
+          if (st === '已完成') progEl.textContent = '90%';
+          else progEl.textContent = ctx.progress + '%';
+        }
+      }
+    }
   }
   dailyLogContentEdited = false;
   refreshDailyLogContent();
@@ -5404,7 +5456,10 @@ function collectDailyLogCategories() {
         taskName: dctx.f['設計項目名稱'] || '未命名',
         note: noteInput ? noteInput.value.trim() : '',
         blockReason: blockReason,
-        status: (dailyLogDesignExtras[id] && dailyLogDesignExtras[id].status) || dctx.f['進度狀態'] || '未開始'
+        status: normalizeReportStatusForCategory(
+          (dailyLogDesignExtras[id] && dailyLogDesignExtras[id].status) || dctx.f['進度狀態'] || '未開始',
+          cat
+        )
       };
       designGroups[cat].push(ditem);
       designIds[cat].push(id);
@@ -5419,7 +5474,10 @@ function collectDailyLogCategories() {
         taskName: ctx.f['任務名稱'] || '未命名',
         note: noteInput ? noteInput.value.trim() : '',
         blockReason: blockReason,
-        status: (dailyLogTaskExtras[id] && dailyLogTaskExtras[id].status) || ctx.f['進度狀態'] || '未開始'
+        status: normalizeReportStatusForCategory(
+          (dailyLogTaskExtras[id] && dailyLogTaskExtras[id].status) || ctx.f['進度狀態'] || '未開始',
+          cat
+        )
       };
       groups[cat].push(item);
       ids[cat].push(id);
