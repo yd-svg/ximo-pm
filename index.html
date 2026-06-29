@@ -531,7 +531,9 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .auth-gate-icon.state-denied{background:#fde8e8;color:#b91c1c}
 .auth-gate-msg{font-size:13px;font-weight:400;color:#9e9b96;margin:0;line-height:1.35;text-align:center}
 .auth-gate.gate-login .auth-gate-msg{margin-bottom:12px}
-.auth-gate.gate-login .auth-gate-body{padding-top:16px}
+.auth-gate.gate-login:not(.gate-login-minimal) .auth-gate-body{padding-top:16px}
+.auth-gate.gate-login.gate-login-minimal .auth-gate-body{padding-top:18px}
+.auth-gate.gate-login.gate-login-minimal .auth-gate-status{display:none}
 .auth-gate-actions .auth-gate-login-btn{width:100%;max-width:280px;padding:13px 20px;font-size:14px;border-radius:8px}
 .auth-gate-user{display:flex;align-items:center;gap:12px;padding:10px 12px;margin-bottom:10px;background:#f7f5f2;border:1px solid #e2ddd8;border-radius:8px;text-align:left;width:100%;max-width:280px;box-sizing:border-box}
 .auth-gate-user-dot{width:40px;height:40px;border-radius:50%;background:linear-gradient(145deg,#e8a04a,#c96d28);color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -2456,7 +2458,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v16';
+var APP_BUILD = '20260615v17';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
@@ -2663,8 +2665,8 @@ function redirectToLarkOAuth() {
 }
 
 function showAuthGateLogin(msg, sub) {
-  var detail = sub || lastLoginError || '點擊下方黑色按鈕開始登入';
-  showAuthGate('login', msg || '請使用 Lark 帳號登入', detail, null);
+  var detail = sub !== undefined ? sub : (lastLoginError || '');
+  showAuthGate('login', msg || '', detail, null);
   preloadAuthUrl();
   setAuthLoginButtonLoading(false);
 }
@@ -2682,10 +2684,10 @@ function attemptAutoLogin(force) {
       return false;
     }
     if (isLikelyLarkClient()) {
-      showAuthGateLogin('請點擊下方按鈕登入', '點擊後才會開啟 Lark 授權（不會自動跳出）');
+      showAuthGateLogin();
       return false;
     }
-    showAuthGateLogin('請點擊下方按鈕登入', '將跳轉至 Lark 授權頁完成登入');
+    showAuthGateLogin();
     return false;
   }).catch(function(err) {
     showAuthGate('login', '登入失敗', err.message || '請點擊下方按鈕重試', null);
@@ -2710,7 +2712,12 @@ function showAuthGate(state, msg, sub, loginUser) {
   if (!gate) return;
   gate.classList.remove('hidden');
   gate.classList.toggle('gate-login', state === 'login');
-  if (msgEl) msgEl.textContent = msg || '';
+  var loginMinimal = state === 'login' && !msg && !sub;
+  gate.classList.toggle('gate-login-minimal', loginMinimal);
+  if (msgEl) {
+    msgEl.textContent = msg || '';
+    msgEl.style.display = msg ? '' : 'none';
+  }
   var showLoading = state === 'loading';
   if (loadingEl) loadingEl.style.display = showLoading ? 'flex' : 'none';
   if (iconEl) {
@@ -2733,10 +2740,7 @@ function showAuthGate(state, msg, sub, loginUser) {
     }
   }
   if (subEl) {
-    if (sub && state !== 'login') {
-      subEl.style.display = 'block';
-      subEl.textContent = sub;
-    } else if (sub && state === 'login') {
+    if (sub) {
       subEl.style.display = 'block';
       subEl.textContent = sub;
     } else {
