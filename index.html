@@ -488,6 +488,8 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .proc-preview{margin-top:8px;border-top:1px solid #eceae6;padding-top:16px}
 .proc-wi{margin:4px 0 6px}
 .proc-wi .srow{grid-template-columns:1fr 70px 90px 50px}
+.proc-wi-remain{font-weight:400;color:var(--t3);margin-left:8px;font-size:10px}
+.proc-wi-remain.over{color:#b42318}
 
 .pp-pay{width:900px;max-width:96vw;display:flex;flex-direction:column;max-height:90vh}
 .pp-pay .ppb{flex:1;overflow:hidden;padding:0;background:#f0f0f0}
@@ -864,7 +866,7 @@ button.btn-loading::after{content:'…';margin-left:2px}
         <div style="font-size:10px;color:var(--t3);line-height:1.8">合約未稅 = 合約金額 ÷ 1.05<br>可用成本 = 合約未稅 ÷ 2<br>剩餘預算 = 可用成本 − 已支出</div>
       </div>
     </div>
-    <div class="fg"><label>工作項目（可編輯，系統已自動帶入）</label><div class="proc-wi" id="np-workitems"></div><button type="button" class="bads" onclick="addProjWorkItem()">＋ 新增工作項目</button></div>
+    <div class="fg"><label>工作項目（可編輯，系統已自動帶入）<span id="np-wi-cost-remain" class="proc-wi-remain"></span></label><div class="proc-wi" id="np-workitems"></div><button type="button" class="bads" onclick="addProjWorkItem()">＋ 新增工作項目</button></div>
   </div>
   <details class="proc-manual-link"><summary>› 改用手動填寫 (不經檔案)</summary>
     <div class="ppb2" style="margin-top:8px">
@@ -1203,6 +1205,7 @@ function calcP(){
   var sp=document.getElementById('np-spent');
   if(sp) sp.textContent='NT$0';
   distributeProjWorkItemCosts(c);
+  updateProjWiCostRemain();
 }
 
 function showProcPreview() {
@@ -2092,21 +2095,64 @@ function applyProcurementParse(parsed) {
   refreshFormSelects();
 }
 
+function getProjAvailCost() {
+  var caEl = document.getElementById('ca');
+  if (!caEl) return 0;
+  var v = parseMoney(caEl.value);
+  if (!v) return 0;
+  return Math.round(Math.round(v / 1.05) / 2);
+}
+
+function getProjWiCostAllocated() {
+  var sum = 0;
+  parsedProjWorkItems.forEach(function(it) {
+    sum += parseFloat(it.cost) || 0;
+  });
+  return sum;
+}
+
+function updateProjWiCostRemain() {
+  var el = document.getElementById('np-wi-cost-remain');
+  if (!el) return;
+  var avail = getProjAvailCost();
+  if (!avail) {
+    el.textContent = '';
+    el.classList.remove('over');
+    return;
+  }
+  var remain = avail - getProjWiCostAllocated();
+  el.textContent = '尚未分配可用成本：' + ntf(remain);
+  el.classList.toggle('over', remain < 0);
+}
+
+function onProjWiCostInput(idx, input) {
+  parsedProjWorkItems[idx].cost = parseMoney(input.value);
+  updateProjWiCostRemain();
+}
+
+function onProjWiCostBlur(idx, input) {
+  parsedProjWorkItems[idx].cost = parseMoney(input.value);
+  input.value = parsedProjWorkItems[idx].cost ? ntf(parsedProjWorkItems[idx].cost) : '';
+  updateProjWiCostRemain();
+}
+
 function renderProjWorkItems() {
   var box = document.getElementById('np-workitems');
   if (!box) return;
   var html = '<div style="display:grid;grid-template-columns:1fr 70px 90px 50px;gap:6px;padding:4px 0;font-size:10px;color:var(--t3)"><span>工作項目名稱</span><span>天數</span><span>可用成本</span><span>權重</span></div>';
   parsedProjWorkItems.forEach(function(it, idx) {
+    var costVal = it.cost ? ntf(it.cost) : '';
     html += '<div class="srow" data-idx="' + idx + '">'
       + '<input type="text" value="' + escAttr(it.name) + '" oninput="parsedProjWorkItems[' + idx + '].name=this.value">'
       + '<div class="dc2"><button type="button" onclick="adjProjWi(this,-1)">−</button>'
       + '<input type="text" class="wi-days" value="' + it.days + '" oninput="parsedProjWorkItems[' + idx + '].days=Math.max(1,parseInt(this.value,10)||1);this.value=parsedProjWorkItems[' + idx + '].days">'
       + '<button type="button" onclick="adjProjWi(this,1)">＋</button></div>'
-      + '<input type="text" value="' + (it.cost ? 'NT$' + Math.round(it.cost).toLocaleString() : '') + '" placeholder="NT$0" oninput="parsedProjWorkItems[' + idx + '].cost=parseMoney(this.value);calcP()">'
+      + '<input type="text" class="wi-cost" value="' + escAttr(costVal) + '" placeholder="NT$0" oninput="onProjWiCostInput(' + idx + ',this)" onblur="onProjWiCostBlur(' + idx + ',this)">'
       + '<input type="text" value="' + it.weight + '%" oninput="parsedProjWorkItems[' + idx + '].weight=parseFloat(this.value)||0">'
       + '</div>';
   });
   box.innerHTML = html;
+  updateProjWiCostRemain();
 }
 
 function adjProjWi(btn, d) {
@@ -2663,7 +2709,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v34';
+var APP_BUILD = '20260615v36';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
