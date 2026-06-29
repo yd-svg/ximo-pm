@@ -449,10 +449,15 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .pp-proj-modal .ppc{color:#9e9b96;font-size:18px;font-weight:400}
 .pp-proj-modal .ppc:hover{background:#f5f5f5;color:#6b6860}
 .pp-proj-modal .ppb{padding:22px 22px 18px;background:#fff;flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.pp-proj-modal .pph{position:relative;z-index:2}
+.pp-proj-modal .ppc{position:relative;z-index:3;pointer-events:auto;flex-shrink:0}
 .pp-proj-foot{padding:16px 22px;border-top:1px solid #eceae6;justify-content:flex-end;gap:10px;background:#fff;flex-shrink:0}
+.proc-file-remove{pointer-events:auto}
 .proc-upload-wrap{border:2px dashed #d4d0c8;border-radius:12px;padding:32px 24px 24px;text-align:center;background:#faf8f4;margin-bottom:16px;transition:border-color .15s,background .15s}
 .proc-upload-wrap:hover,.proc-upload-wrap.drag{border-color:#a8c4e0;background:#f4f8fc}
-.proc-upload-wrap.is-processing{pointer-events:none;opacity:.9;border-color:#a8c4e0}
+.proc-upload-wrap.is-processing{opacity:.9;border-color:#a8c4e0}
+.proc-upload-wrap.is-processing .upload-zone-inner{pointer-events:none}
+.proc-upload-wrap.has-file .uz-empty{display:none}
 .proc-upload-wrap.has-file{padding-bottom:20px}
 .upload-zone-inner{display:block;cursor:pointer}
 .uz-empty{display:flex;flex-direction:column;align-items:center;gap:4px}
@@ -819,7 +824,7 @@ button.btn-loading::after{content:'…';margin-left:2px}
 </div><!-- /body -->
 
 <!-- ══ POPUPS ══ -->
-<div class="po" id="pp-proj"><div class="pp ppw pp-proj-modal"><div class="pph"><h3>上傳服務建議書</h3><button class="ppc" onclick="cl('pp-proj')">✕</button></div><div class="ppb">
+<div class="po" id="pp-proj"><div class="pp ppw pp-proj-modal"><div class="pph"><h3>上傳服務建議書</h3><button type="button" class="ppc" onclick="closeProcProjPopup(event)">✕</button></div><div class="ppb">
   <div class="proc-upload-wrap" id="proc-upload-zone">
     <label for="proc-file" class="upload-zone-inner" id="proc-upload-label">
       <div class="uz-empty" id="proc-empty-state">
@@ -827,15 +832,15 @@ button.btn-loading::after{content:'…';margin-left:2px}
         <div class="uz-title">點此上傳服務建議書</div>
         <div class="uz-formats">支援 PDF、Word（.docx）、經費表圖片（.jpg / .png）</div>
       </div>
-      <div class="proc-file-card" id="proc-file-card" style="display:none">
-        <div class="proc-file-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg></div>
-        <div class="proc-file-info">
-          <div class="proc-file-name" id="proc-file-name"></div>
-          <div class="proc-file-status" id="proc-parse-status"></div>
-        </div>
-        <button type="button" class="proc-file-remove" id="proc-clear-btn" title="移除檔案" onclick="event.preventDefault();clearProcUpload()">✕</button>
-      </div>
     </label>
+    <div class="proc-file-card" id="proc-file-card" style="display:none">
+      <div class="proc-file-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg></div>
+      <div class="proc-file-info">
+        <div class="proc-file-name" id="proc-file-name"></div>
+        <div class="proc-file-status" id="proc-parse-status"></div>
+      </div>
+      <button type="button" class="proc-file-remove" id="proc-clear-btn" title="移除檔案" onclick="clearProcUpload(event)">✕</button>
+    </div>
     <input type="file" id="proc-file" class="proc-file-input" accept=".pdf,.docx,.txt,.text,.jpg,.jpeg,.png,.webp,.gif,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp,image/gif" onchange="onProcFileSelect(this)">
   </div>
   <div class="proc-preview" id="proc-preview" style="display:none">
@@ -868,7 +873,7 @@ button.btn-loading::after{content:'…';margin-left:2px}
     </div>
     <button type="button" class="bads" onclick="applyManualProject()">套用到上方欄位</button>
   </details>
-</div><div class="ppf pp-proj-foot"><button type="button" class="proc-btn-cancel" onclick="cl('pp-proj')">取消</button><button type="button" class="proc-btn-confirm" id="np-save-btn" onclick="saveProjectImport()" disabled>確認新增標案</button></div></div></div>
+</div><div class="ppf pp-proj-foot"><button type="button" class="proc-btn-cancel" onclick="closeProcProjPopup(event)">取消</button><button type="button" class="proc-btn-confirm" id="np-save-btn" onclick="saveProjectImport()" disabled>確認新增標案</button></div></div></div>
 
 <div class="po" id="pp-work"><div class="pp ppw"><div class="pph"><h3>建立標案的工作項目</h3><button class="ppc" onclick="cl('pp-work')">✕</button></div><div class="ppb"><div class="fg"><label>標案</label><select id="nw-proj" onchange="onNwProjChange()"></select></div><div class="fg"><label>起始日（合約）</label><div id="nw-start-hint" class="fg-hint" style="padding:8px 10px;background:var(--sf2);border-radius:var(--rs);font-size:12px;color:var(--t2)">依所選標案合約開始日</div></div><div style="display:grid;grid-template-columns:1fr 90px 1fr 70px 50px;gap:6px;padding:4px 0;font-size:10px;color:var(--t3)"><span>工作項目名稱</span><span>天數</span><span>負責夥伴</span><span>可用成本</span><span>權重</span></div><div class="slist" id="sl"></div><button class="bads" onclick="addS()">＋ 新增工作項目</button></div><div class="ppf"><button class="bcan" onclick="cl('pp-work')">取消</button><button class="bpri" onclick="saveWorkItems()">新增</button></div></div></div>
 
@@ -1166,7 +1171,25 @@ function sf(el,color){
 }
 function op(id){document.getElementById(id).classList.add('open');}
 function openPopup(id) { preparePopup(id); op(id); }
-function cl(id){document.getElementById(id).classList.remove('open');}
+function cl(id){
+  var el = document.getElementById(id);
+  if (el) el.classList.remove('open');
+}
+function closeProcProjPopup(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  procUploadSeq++;
+  var zone = document.getElementById('proc-upload-zone');
+  if (zone) zone.classList.remove('is-processing');
+  cl('pp-proj');
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  var proj = document.getElementById('pp-proj');
+  if (proj && proj.classList.contains('open')) closeProcProjPopup();
+});
 document.querySelectorAll('.po').forEach(function(o){
   o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('open');});
 });
@@ -1249,7 +1272,11 @@ function setProcStatus(msg, isErr) {
   }
 }
 
-function clearProcUpload() {
+function clearProcUpload(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
   procUploadSeq++;
   resetProcForm();
   setProcFileUi(false);
@@ -2622,7 +2649,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v26';
+var APP_BUILD = '20260615v27';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
