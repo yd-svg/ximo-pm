@@ -910,7 +910,7 @@ button.btn-loading::after{content:'…';margin-left:2px}
 <div class="po" id="pp-daily-log"><div class="pp pp-daily"><div class="pph pph-report"><h3>每日工作回報</h3><button class="ppc" style="color:rgba(255,255,255,.8)" onclick="cl('pp-daily-log')">✕</button></div><div class="ppb">
   <div class="dl-date" id="dl-date-display"></div>
   <div class="fg"><label>回報人</label><select id="dl-author" data-members onchange="onDailyLogAuthorChange()"></select></div>
-  <div class="fg"><label>任務分類（每項選一種狀態）</label><div class="dl-proj-filter" id="dl-proj-filter"></div><div class="dl-person-filter" id="dl-person-filter"></div><div class="dl-task-list" id="dl-task-list"></div><div class="dl-hint">預設只顯示目前回報人負責的項目。選擇狀態後會即時出現在下方備註；「不列入」不會寫進日報。</div></div>
+  <div class="fg"><label>任務分類</label><div class="dl-proj-filter" id="dl-proj-filter"></div><div class="dl-person-filter" id="dl-person-filter"></div><div class="dl-task-list" id="dl-task-list"></div><div class="dl-hint">預設只顯示目前回報人負責的項目。選擇狀態後會即時出現在下方備註；「不列入」不會寫進日報。</div></div>
   <div class="fg"><label>備註（自動摘要，可編輯）</label><textarea id="dl-content" rows="7" placeholder="選擇任務後自動產生…"></textarea></div>
 </div><div class="ppf"><button class="bcan" onclick="cl('pp-daily-log')">取消</button><button class="bpri btn-report" onclick="saveDailyJournal()">儲存日報</button></div></div></div>
 
@@ -2456,7 +2456,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v14';
+var APP_BUILD = '20260615v16';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
@@ -5157,15 +5157,19 @@ function renderDailyLogPersonFilter(items) {
   });
   people.sort(function(a, b) { return a.localeCompare(b, 'zh-Hant'); });
   var html = '<span class="dl-person-label">負責人</span>';
-  html += '<span class="dl-ptag' + (!dailyLogPersonFilter ? ' active' : '') + '" data-person="" style="background:var(--accent);color:#fff">全部</span>';
+  var allPersonActive = !dailyLogPersonFilter;
+  html += '<span class="dl-ptag' + (allPersonActive ? ' active' : '') + '" data-person=""' + (allPersonActive ? ' style="background:var(--accent);color:#fff;border-color:var(--accent)"' : '') + '>全部</span>';
   people.forEach(function(name) {
-    var active = dailyLogPersonFilter === name ? ' active' : '';
-    html += '<span class="dl-ptag' + active + '" data-person="' + escAttr(name) + '">' + escHtml(name) + '</span>';
+    var isActive = dailyLogPersonFilter === name;
+    var active = isActive ? ' active' : '';
+    var style = isActive ? ' style="background:var(--accent);color:#fff;border-color:var(--accent)"' : '';
+    html += '<span class="dl-ptag' + active + '" data-person="' + escAttr(name) + '"' + style + '>' + escHtml(name) + '</span>';
   });
   area.innerHTML = html;
   area.querySelectorAll('.dl-ptag').forEach(function(tag) {
     tag.addEventListener('click', function() {
       dailyLogPersonFilter = tag.dataset.person || '';
+      renderDailyLogPersonFilter(getDailyLogAllItems());
       renderDailyLogTasks();
     });
   });
@@ -5205,16 +5209,22 @@ function renderDailyLogProjFilter(items) {
   items.forEach(function(it) {
     if (projs.indexOf(it.projName) < 0) projs.push(it.projName);
   });
-  var html = '<span class="dl-ptag' + (!dailyLogProjFilter ? ' active' : '') + '" data-proj="" style="background:var(--accent);color:#fff">全部</span>';
+  var allProjActive = !dailyLogProjFilter;
+  var html = '<span class="dl-ptag' + (allProjActive ? ' active' : '') + '" data-proj=""' + (allProjActive ? ' style="background:var(--accent);color:#fff;border-color:var(--accent)"' : '') + '>全部</span>';
   projs.forEach(function(proj) {
     var color = projColorByName(proj);
-    var active = dailyLogProjFilter === proj ? ' active' : '';
-    html += '<span class="dl-ptag' + active + '" data-proj="' + escAttr(proj) + '" style="border-color:' + color + ';color:' + color + '">' + proj + '</span>';
+    var isActive = dailyLogProjFilter === proj;
+    var active = isActive ? ' active' : '';
+    var style = isActive
+      ? 'background:' + color + ';color:#fff;border-color:' + color
+      : 'border-color:' + color + ';color:' + color;
+    html += '<span class="dl-ptag' + active + '" data-proj="' + escAttr(proj) + '" style="' + style + '">' + proj + '</span>';
   });
   area.innerHTML = html;
   area.querySelectorAll('.dl-ptag').forEach(function(tag) {
     tag.addEventListener('click', function() {
       dailyLogProjFilter = tag.dataset.proj || '';
+      renderDailyLogProjFilter(getDailyLogAllItems());
       renderDailyLogTasks();
     });
   });
