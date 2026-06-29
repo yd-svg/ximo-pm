@@ -866,7 +866,7 @@ button.btn-loading::after{content:'…';margin-left:2px}
         <div style="font-size:10px;color:var(--t3);line-height:1.8">合約未稅 = 合約金額 ÷ 1.05<br>可用成本 = 合約未稅 ÷ 2<br>剩餘預算 = 可用成本 − 已支出</div>
       </div>
     </div>
-    <div class="fg"><label>工作項目（可編輯，系統已自動帶入）<span id="np-wi-cost-remain" class="proc-wi-remain"></span></label><div class="proc-wi" id="np-workitems"></div><button type="button" class="bads" onclick="addProjWorkItem()">＋ 新增工作項目</button></div>
+    <div class="fg"><label>工作項目（可編輯，系統已自動帶入）<span id="np-wi-cost-remain" class="proc-wi-remain"></span><span id="np-wi-weight-remain" class="proc-wi-remain"></span></label><div class="proc-wi" id="np-workitems"></div><button type="button" class="bads" onclick="addProjWorkItem()">＋ 新增工作項目</button></div>
   </div>
   <details class="proc-manual-link"><summary>› 改用手動填寫 (不經檔案)</summary>
     <div class="ppb2" style="margin-top:8px">
@@ -2136,6 +2136,42 @@ function onProjWiCostBlur(idx, input) {
   updateProjWiCostRemain();
 }
 
+function parseWeightPctInput(str) {
+  var n = parseFloat(String(str).replace(/[^0-9.]/g, '')) || 0;
+  return Math.min(100, Math.max(0, Math.round(n)));
+}
+
+function formatWeightPct(n) {
+  return n ? (Math.round(n) + '%') : '';
+}
+
+function getProjWiWeightAllocated() {
+  var sum = 0;
+  parsedProjWorkItems.forEach(function(it) {
+    sum += parseFloat(it.weight) || 0;
+  });
+  return sum;
+}
+
+function updateProjWiWeightRemain() {
+  var el = document.getElementById('np-wi-weight-remain');
+  if (!el) return;
+  var remain = 100 - getProjWiWeightAllocated();
+  el.textContent = '尚未分配權重：' + remain + '%';
+  el.classList.toggle('over', remain < 0);
+}
+
+function onProjWiWeightInput(idx, input) {
+  parsedProjWorkItems[idx].weight = parseWeightPctInput(input.value);
+  updateProjWiWeightRemain();
+}
+
+function onProjWiWeightBlur(idx, input) {
+  parsedProjWorkItems[idx].weight = parseWeightPctInput(input.value);
+  input.value = formatWeightPct(parsedProjWorkItems[idx].weight);
+  updateProjWiWeightRemain();
+}
+
 function renderProjWorkItems() {
   var box = document.getElementById('np-workitems');
   if (!box) return;
@@ -2148,11 +2184,12 @@ function renderProjWorkItems() {
       + '<input type="text" class="wi-days" value="' + it.days + '" oninput="parsedProjWorkItems[' + idx + '].days=Math.max(1,parseInt(this.value,10)||1);this.value=parsedProjWorkItems[' + idx + '].days">'
       + '<button type="button" onclick="adjProjWi(this,1)">＋</button></div>'
       + '<input type="text" class="wi-cost" value="' + escAttr(costVal) + '" placeholder="NT$0" oninput="onProjWiCostInput(' + idx + ',this)" onblur="onProjWiCostBlur(' + idx + ',this)">'
-      + '<input type="text" value="' + it.weight + '%" oninput="parsedProjWorkItems[' + idx + '].weight=parseFloat(this.value)||0">'
+      + '<input type="text" class="wi-weight" value="' + escAttr(formatWeightPct(it.weight)) + '" placeholder="0%" oninput="onProjWiWeightInput(' + idx + ',this)" onblur="onProjWiWeightBlur(' + idx + ',this)">'
       + '</div>';
   });
   box.innerHTML = html;
   updateProjWiCostRemain();
+  updateProjWiWeightRemain();
 }
 
 function adjProjWi(btn, d) {
@@ -2709,7 +2746,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v36';
+var APP_BUILD = '20260615v37';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
