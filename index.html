@@ -2892,7 +2892,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v49';
+var APP_BUILD = '20260615v51';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
@@ -7621,23 +7621,25 @@ function confirmArchiveProject() {
         }
         var savedProjId = archivingProjId;
         var rec = projectsData.find(function(p) { return p.record_id === savedProjId; });
-        if (rec) {
-          rec.fields['狀態'] = '封存';
-          if (res.summary) rec.fields['封存摘要'] = res.summary;
-        }
         var oldFields = rec ? {
           '狀態': rec.fields['狀態'],
           '知識庫連結': rec.fields['知識庫連結'],
           '封存連結': rec.fields['封存連結'],
           '封存摘要': rec.fields['封存摘要']
         } : null;
+        if (rec && res.statusUpdated) {
+          rec.fields['狀態'] = '封存';
+          if (res.summary) rec.fields['封存摘要'] = res.summary;
+        }
         cancelArchiveProject();
-        if (oldFields) undoStack.push({ type: 'update', table: 'projects', recordId: savedProjId, data: oldFields });
+        if (oldFields && res.statusUpdated) undoStack.push({ type: 'update', table: 'projects', recordId: savedProjId, data: oldFields });
         loadData();
-        var msg = res.wikiNote || res.summary || '封存完成';
-        showUndoToast('標案已封存至知識庫');
+        showUndoToast(res.statusUpdated ? '標案已封存至知識庫' : '資料已寫入知識庫');
         var openUrl = res.wikiUrl || url;
-        if (confirm(msg + '\n\n是否開啟資料頁面？')) {
+        var confirmMsg = res.statusUpdated
+          ? '封存完成。\n\n是否開啟知識庫資料頁面？'
+          : '資料已成功寫入知識庫。\n\nPM 後台狀態未能自動更新，請至標案表手動改為「封存」。\n\n是否開啟知識庫資料頁面？';
+        if (confirm(confirmMsg)) {
           window.open(openUrl, '_blank', 'noopener');
         }
       }).catch(function(err) {

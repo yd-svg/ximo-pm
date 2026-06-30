@@ -1891,8 +1891,21 @@ async function archiveProject(token, projectId, wikiUrl, userAccessToken) {
   }
 
   let statusWarning = '';
+  let statusUpdated = false;
   let srcAllowed = null;
   const cfg = getOperationalBitableConfig();
+  const userTok = String(userAccessToken || '').trim();
+
+  async function tryUpdateProjectFields(fields) {
+    const normalized = await normalizeWriteFields(token, cfg.tables.projects, fields, cfg.appToken);
+    const body = normalized && Object.keys(normalized).length ? normalized : fields;
+    if (!body || !Object.keys(body).length) return false;
+    await writeWithUserFallback(token, userTok, function(tok, asUser) {
+      return updateRecord(tok, cfg.tables.projects, projectId, body, cfg.appToken, asUser);
+    });
+    return true;
+  }
+
   try {
     const srcFieldCache = {};
     const srcSchemas = await getTableFieldSchemas(token, cfg.appToken, cfg.tables.projects, srcFieldCache);
@@ -1905,18 +1918,13 @@ async function archiveProject(token, projectId, wikiUrl, userAccessToken) {
     if (wikiUrl) {
       applyWikiUrlOverrides(safeUpdate, srcAllowed, srcMeta, normalizeWikiInputUrl(wikiUrl), ['Wiki存放位置']);
     }
-    const normalizedUpdate = await normalizeWriteFields(token, cfg.tables.projects, safeUpdate, cfg.appToken);
-    if (Object.keys(normalizedUpdate).length) {
-      await updateRecord(token, cfg.tables.projects, projectId, normalizedUpdate, cfg.appToken);
-    } else if (srcAllowed['狀態']) {
-      await updateRecord(token, cfg.tables.projects, projectId, { '狀態': '封存' }, cfg.appToken);
-    }
+    statusUpdated = await tryUpdateProjectFields(safeUpdate);
   } catch (err) {
     statusWarning = formatArchiveCopyError(err.message || String(err));
     if (srcAllowed && srcAllowed['狀態']) {
       try {
-        await updateRecord(token, cfg.tables.projects, projectId, { '狀態': '封存' }, cfg.appToken);
-        statusWarning = '';
+        statusUpdated = await tryUpdateProjectFields({ '狀態': '封存' });
+        if (statusUpdated) statusWarning = '';
       } catch (retryErr) {
         statusWarning = formatArchiveCopyError(retryErr.message || String(retryErr));
       }
@@ -1927,6 +1935,8 @@ async function archiveProject(token, projectId, wikiUrl, userAccessToken) {
     ok: true,
     projectName: name,
     summary: summary,
+    statusUpdated: statusUpdated,
+    statusWarning: statusWarning,
     counts: {
       workitems: bundle.workitems.length,
       tasks: bundle.tasks.length,
@@ -1935,7 +1945,9 @@ async function archiveProject(token, projectId, wikiUrl, userAccessToken) {
     },
     copiedToWikiBase: copiedToWiki,
     wikiUrl: finalWikiUrl,
-    wikiNote: statusWarning ? '已封存至知識庫（狀態更新：' + statusWarning + '）' : '已封存至知識庫'
+    wikiNote: statusWarning
+      ? '資料已寫入知識庫，但 PM 後台狀態未能自動更新'
+      : '已封存至知識庫'
   };
 }
  
