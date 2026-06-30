@@ -2850,13 +2850,14 @@ function paintGantt(key,proj,vs,ve,total,cw){
       if(bx+bw<0||bx>tw)return;
       var ax=Math.max(0,bx),aw=Math.min(bw,tw-ax);
       var top = 4 + bi * 20;
-      var barColor = bar.design ? DESIGN_GANTT_COLOR : (bar.c || proj.color);
+      var barColor = bar.overdue ? '' : (bar.design ? DESIGN_GANTT_COLOR : (bar.c || proj.color));
       var clickAttr = '';
       if (bar.id && bar.design) clickAttr = ' onclick="openDesignDetail(\'' + bar.id + '\')"';
       else if (bar.id) clickAttr = ' onclick="openTaskDetail(\'' + bar.id + '\')"';
       var overdueClass = bar.overdue ? ' overdue' : '';
-      var bgStyle = bar.overdue ? '' : 'background:' + barColor + ';';
-      bH+='<div class="gbar'+overdueClass+'" style="left:'+ax+'px;width:'+aw+'px;top:'+top+'px;transform:none;height:16px;'+bgStyle+'opacity:'+bar.o+'"'+clickAttr+' title="'+escAttr(bar.l)+'">'+escHtml(bar.l)+'</div>';
+      var bgStyle = bar.overdue ? '' : ('background:' + barColor + ';');
+      var op = bar.o != null ? bar.o : 1;
+      bH+='<div class="gbar'+overdueClass+'" style="left:'+ax+'px;width:'+aw+'px;top:'+top+'px;transform:none;height:16px;'+bgStyle+'opacity:'+op+'"'+clickAttr+' title="'+escAttr(bar.l)+'">'+escHtml(bar.l)+'</div>';
     });
     tmH+='<div class="gtr" style="width:'+tw+'px;height:'+rowH+'px">'+bH+'</div>';
   });
@@ -2926,7 +2927,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v61';
+var APP_BUILD = '20260615v62';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
@@ -5066,7 +5067,8 @@ function renderGanttFromData() {
           s: toDateStr(tStart),
           e: toDateStr(tDue),
           l: tName,
-          o: tProg >= 100 ? 1 : (tProg > 0 ? 0.9 : 0.55),
+          o: 1,
+          c: color,
           id: t.record_id,
           overdue: tProg < 100 && dueDiff !== null && dueDiff < 0
         });
@@ -5085,7 +5087,7 @@ function renderGanttFromData() {
           s: toDateStr(range.start),
           e: toDateStr(range.end),
           l: dName,
-          o: dProg >= 100 ? 1 : (dProg > 0 ? 0.92 : 0.55),
+          o: 1,
           c: DESIGN_GANTT_COLOR,
           design: true,
           id: d.record_id,
@@ -5093,23 +5095,7 @@ function renderGanttFromData() {
         });
       });
 
-      if (bars.length) {
-        rows.push({ n: wiName, m: metaStr, bars: bars });
-      } else if (wiEnd) {
-        var barStart = wiStart || new Date(wiEnd.getTime() - 7 * 86400000);
-        rows.push({
-          n: wiName,
-          m: metaStr,
-          bars: [{ s: toDateStr(barStart), e: toDateStr(wiEnd), l: wiName, o: 0.6 }]
-        });
-      } else if (wiStart) {
-        var barEnd2 = wiEnd || new Date(wiStart.getTime() + 7 * 86400000);
-        rows.push({
-          n: wiName,
-          m: metaStr,
-          bars: [{ s: toDateStr(wiStart), e: toDateStr(barEnd2), l: wiName, o: 0.6 }]
-        });
-      }
+      rows.push({ n: wiName, m: metaStr, bars: bars });
     });
 
     if (!rows.length) return;
