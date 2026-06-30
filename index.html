@@ -484,6 +484,8 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .proc-btn-confirm{padding:10px 24px;border-radius:10px;border:none;background:#dbeafe;color:#1d4ed8;font-size:13px;font-weight:600;cursor:pointer}
 .proc-btn-confirm:hover:not(:disabled){background:#bfdbfe}
 .proc-btn-confirm:disabled{opacity:.4;cursor:not-allowed;background:#e8eef8;color:#94a3b8}
+.proc-btn-confirm.btn-loading{opacity:1!important;cursor:wait!important;background:#93c5fd!important;color:#1e3a5f!important;pointer-events:none}
+.proc-btn-cancel:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
 .proc-file-input{position:absolute;width:0;height:0;opacity:0;pointer-events:none}
 .proc-preview{margin-top:8px;border-top:1px solid #eceae6;padding-top:16px}
 .proc-wi{margin:4px 0 6px}
@@ -2336,7 +2338,13 @@ function resetProcForm() {
   var prev = document.getElementById('proc-preview');
   if (prev) prev.style.display = 'none';
   var btn = document.getElementById('np-save-btn');
-  if (btn) btn.disabled = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '確認新增標案';
+    btn.classList.remove('btn-loading');
+  }
+  var cancel = document.querySelector('.pp-proj-foot .proc-btn-cancel');
+  if (cancel) cancel.disabled = false;
   ['np-name', 'ca', 'np-wiki-folder', 'np-wiki-folder-manual'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
@@ -2366,7 +2374,46 @@ function getProjectRecordId(res) {
   return null;
 }
 
+var projectImportSaving = false;
+var workItemsImportSaving = false;
+
+function setProjectImportSaving(saving) {
+  projectImportSaving = saving;
+  var btn = document.getElementById('np-save-btn');
+  var cancel = document.querySelector('.pp-proj-foot .proc-btn-cancel');
+  if (btn) {
+    if (saving) {
+      btn.disabled = true;
+      btn.classList.add('btn-loading');
+      btn.textContent = '加入中…';
+    } else {
+      btn.classList.remove('btn-loading');
+      if (btn.textContent === '加入中…') btn.textContent = '確認新增標案';
+    }
+  }
+  if (cancel) cancel.disabled = saving;
+}
+
+function setWorkItemsImportSaving(saving) {
+  workItemsImportSaving = saving;
+  var foot = document.querySelector('#pp-work .ppf');
+  var btn = foot && foot.querySelector('.bpri');
+  var cancel = foot && foot.querySelector('.bcan');
+  if (btn) {
+    if (saving) {
+      btn.disabled = true;
+      btn.classList.add('btn-loading');
+      btn.textContent = '加入中…';
+    } else {
+      btn.classList.remove('btn-loading');
+      if (btn.textContent === '加入中…') btn.textContent = '新增';
+    }
+  }
+  if (cancel) cancel.disabled = saving;
+}
+
 function saveProjectImport() {
+  if (projectImportSaving) return;
   var name = document.getElementById('np-name').value.trim();
   if (!name) { alert('請填寫標案名稱（或上傳服務建議書自動帶入）'); return; }
   var pm = document.getElementById('np-pm').value;
@@ -2387,6 +2434,7 @@ function saveProjectImport() {
   items.forEach(normalizeProjWiItem);
   var wiFieldsList = items.map(function(item) { return buildWiFieldsForImport(item, pm); });
 
+  setProjectImportSaving(true);
   apiProjectImport(fields, wiFieldsList).then(function(res) {
     cl('pp-proj');
     resetProcForm();
@@ -2398,6 +2446,14 @@ function saveProjectImport() {
     alert(msg);
   }).catch(function(err) {
     alert('新增失敗：' + err.message);
+  }).finally(function() {
+    var popup = document.getElementById('pp-proj');
+    var popupOpen = popup && popup.classList.contains('open');
+    setProjectImportSaving(false);
+    if (popupOpen) {
+      var btn = document.getElementById('np-save-btn');
+      if (btn) btn.disabled = false;
+    }
   });
 }
 function calcE(){
@@ -2831,7 +2887,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v46';
+var APP_BUILD = '20260615v47';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
@@ -8165,6 +8221,7 @@ function refreshFormSelects() {
 }
 
 function saveWorkItems() {
+  if (workItemsImportSaving) return;
   var projId = document.getElementById('nw-proj').value;
   if (!projId) { alert('請選擇標案'); return; }
 
@@ -8186,6 +8243,7 @@ function saveWorkItems() {
     return buildWiFieldsForImport(item, item.partner);
   });
 
+  setWorkItemsImportSaving(true);
   apiWorkItemsImport(projId, wiFieldsList).then(function(res) {
     cl('pp-work');
     document.getElementById('sl').innerHTML = '';
@@ -8197,6 +8255,14 @@ function saveWorkItems() {
     alert(msg);
   }).catch(function(err) {
     alert('新增失敗：' + err.message);
+  }).finally(function() {
+    var popup = document.getElementById('pp-work');
+    var popupOpen = popup && popup.classList.contains('open');
+    setWorkItemsImportSaving(false);
+    if (popupOpen) {
+      var btn = popup.querySelector('.ppf .bpri');
+      if (btn) btn.disabled = false;
+    }
   });
 }
 
