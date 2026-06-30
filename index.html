@@ -433,7 +433,7 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .fi .fl{font-size:10px;color:var(--t3);margin-bottom:1px}
 .fi .fv{font-size:12px;font-weight:600}
 .slist{margin:4px 0 6px}
-.srow{display:grid;grid-template-columns:1fr 100px 100px 1fr 90px 50px;gap:6px;align-items:center;margin-bottom:5px;padding:6px;background:var(--sf2);border-radius:var(--rs)}
+.srow{display:grid;grid-template-columns:1fr 100px 100px 1fr 1fr 90px 50px;gap:6px;align-items:center;margin-bottom:5px;padding:6px;background:var(--sf2);border-radius:var(--rs)}
 .srow input,.srow select{padding:5px 6px;border:1px solid var(--border);border-radius:3px;font-size:11px;background:#fff;font-family:inherit}
 .dc2{display:flex;align-items:center;gap:3px}
 .dc2 button{width:17px;height:17px;border:1px solid var(--border);border-radius:3px;background:#fff;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center}
@@ -489,7 +489,7 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .proc-file-input{position:absolute;width:0;height:0;opacity:0;pointer-events:none}
 .proc-preview{margin-top:8px;border-top:1px solid #eceae6;padding-top:16px}
 .proc-wi{margin:4px 0 6px}
-.proc-wi .srow{grid-template-columns:1fr 88px 88px 90px 50px}
+.proc-wi .srow{grid-template-columns:1fr 88px 88px 1fr 1fr 90px 50px}
 .proc-wi-remain{font-weight:400;color:var(--t3);margin-left:8px;font-size:10px}
 .proc-wi-remain.over{color:#b42318}
 
@@ -880,7 +880,7 @@ button.btn-loading::after{content:'…';margin-left:2px}
   </details>
 </div><div class="ppf pp-proj-foot"><button type="button" class="proc-btn-cancel" onclick="closeProcProjPopup(event)">取消</button><button type="button" class="proc-btn-confirm" id="np-save-btn" onclick="saveProjectImport()" disabled>確認新增標案</button></div></div></div>
 
-<div class="po" id="pp-work"><div class="pp ppw"><div class="pph"><h3>建立標案的工作項目</h3><button class="ppc" onclick="cl('pp-work')">✕</button></div><div class="ppb"><div class="fg"><label>標案</label><select id="nw-proj" onchange="onNwProjChange()"></select></div><div style="display:grid;grid-template-columns:1fr 100px 100px 1fr 90px 50px;gap:6px;padding:4px 0;font-size:10px;color:var(--t3)"><span>工作項目名稱</span><span>開始日期</span><span>結束日期</span><span>負責夥伴</span><span>可用成本</span><span>權重</span></div><div class="slist" id="sl"></div><button class="bads" onclick="addS()">＋ 新增工作項目</button></div><div class="ppf"><button class="bcan" onclick="cl('pp-work')">取消</button><button class="bpri" onclick="saveWorkItems()">新增</button></div></div></div>
+<div class="po" id="pp-work"><div class="pp ppw"><div class="pph"><h3>建立標案的工作項目</h3><button class="ppc" onclick="cl('pp-work')">✕</button></div><div class="ppb"><div class="fg"><label>標案</label><select id="nw-proj" onchange="onNwProjChange()"></select></div><div style="display:grid;grid-template-columns:1fr 100px 100px 1fr 1fr 90px 50px;gap:6px;padding:4px 0;font-size:10px;color:var(--t3)"><span>工作項目名稱</span><span>開始日期</span><span>結束日期</span><span>負責夥伴</span><span>執行夥伴</span><span>可用成本</span><span>權重</span></div><div class="slist" id="sl"></div><button class="bads" onclick="addS()">＋ 新增工作項目</button></div><div class="ppf"><button class="bcan" onclick="cl('pp-work')">取消</button><button class="bpri" onclick="saveWorkItems()">新增</button></div></div></div>
 
 <div class="po" id="pp-task"><div class="pp"><div class="pph"><h3>建立新任務</h3><button class="ppc" onclick="cl('pp-task')">✕</button></div><div class="ppb"><div class="fg"><label>任務名稱</label><input type="text" id="nt-name" placeholder="拜訪OO茶主"></div><div class="fg"><label>負責人</label><select id="nt-assignee" data-members></select></div><div class="fg"><label>所屬工作項目</label><select id="nt-wi"></select></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:11px"><div class="fg" style="margin:0"><label>開始日期</label><input type="date" id="nt-start"></div><div class="fg" style="margin:0"><label>預計完成日</label><input type="date" id="nt-due"></div></div><div class="fg"><label>進度狀態</label><select id="nt-status"></select></div></div><div class="ppf"><button class="bcan" onclick="cl('pp-task')">取消</button><button class="bpri" onclick="saveTask()">新增</button></div></div></div>
 
@@ -970,7 +970,8 @@ button.btn-loading::after{content:'…';margin-left:2px}
 <!-- 修改工作項目 -->
 <div class="po" id="pp-edit-wi"><div class="pp"><div class="pph"><h3>修改工作項目</h3><button class="ppc" onclick="cl('pp-edit-wi')">✕</button></div><div class="ppb">
   <div class="fg"><label>工作項目名稱</label><input type="text" id="ew-name"></div>
-  <div class="fg"><label>負責人</label><select id="ew-assignee" data-members></select></div>
+  <div class="fg"><label>負責夥伴</label><select id="ew-assignee" data-members></select></div>
+  <div class="fg"><label>執行夥伴</label><select id="ew-exec-partner" data-members></select></div>
   <div class="fg"><label>起始日（合約）</label><div id="ew-start-hint" class="fg-hint" style="padding:8px 10px;background:var(--sf2);border-radius:var(--rs);font-size:12px;color:var(--t2)">依標案合約開始日</div></div>
   <div class="fg"><label>截止日</label><input type="date" id="ew-end"></div>
   <div class="fg"><label>可用成本</label><input type="text" class="money-input" id="ew-cost" placeholder="NT$0"></div>
@@ -2228,6 +2229,8 @@ function buildWiFieldsForImport(item, pmFallback) {
   if (item.start) fields['開始日'] = dateInputToTs(item.start);
   var partner = larkPerson(item.partner || pmFallback);
   if (partner) fields['負責夥伴'] = partner;
+  var execPartner = larkPerson(item.execPartner);
+  if (execPartner) fields['執行夥伴'] = execPartner;
   return fields;
 }
 
@@ -2268,10 +2271,27 @@ function onProjWiDateChange(idx, field, value) {
   parsedProjWorkItems[idx][field] = value;
 }
 
+function syncProjWiMemberRows() {
+  document.querySelectorAll('#np-workitems .srow').forEach(function(row, idx) {
+    var it = parsedProjWorkItems[idx];
+    if (!it) return;
+    var pSel = row.querySelector('.wi-member');
+    var eSel = row.querySelector('.wi-exec-member');
+    if (pSel) {
+      if (it.partner) pSel.value = it.partner;
+      pSel.onchange = function() { it.partner = this.value; };
+    }
+    if (eSel) {
+      if (it.execPartner) eSel.value = it.execPartner;
+      eSel.onchange = function() { it.execPartner = this.value; };
+    }
+  });
+}
+
 function renderProjWorkItems() {
   var box = document.getElementById('np-workitems');
   if (!box) return;
-  var html = '<div style="display:grid;grid-template-columns:1fr 88px 88px 90px 50px;gap:6px;padding:4px 0;font-size:10px;color:var(--t3)"><span>工作項目名稱</span><span>開始日期</span><span>結束日期</span><span>可用成本</span><span>權重</span></div>';
+  var html = '<div style="display:grid;grid-template-columns:1fr 88px 88px 1fr 1fr 90px 50px;gap:6px;padding:4px 0;font-size:10px;color:var(--t3)"><span>工作項目名稱</span><span>開始日期</span><span>結束日期</span><span>負責夥伴</span><span>執行夥伴</span><span>可用成本</span><span>權重</span></div>';
   parsedProjWorkItems.forEach(function(it, idx) {
     normalizeProjWiItem(it);
     var costVal = it.cost ? ntf(it.cost) : '';
@@ -2279,11 +2299,15 @@ function renderProjWorkItems() {
       + '<input type="text" value="' + escAttr(it.name) + '" oninput="parsedProjWorkItems[' + idx + '].name=this.value">'
       + '<input type="date" class="wi-start" value="' + escAttr(it.start || '') + '" onchange="onProjWiDateChange(' + idx + ',\'start\',this.value)">'
       + '<input type="date" class="wi-end" value="' + escAttr(it.end || '') + '" onchange="onProjWiDateChange(' + idx + ',\'end\',this.value)">'
+      + '<select class="wi-member" data-members></select>'
+      + '<select class="wi-exec-member" data-members></select>'
       + '<input type="text" class="wi-cost" value="' + escAttr(costVal) + '" placeholder="NT$0" oninput="onProjWiCostInput(' + idx + ',this)" onblur="onProjWiCostBlur(' + idx + ',this)">'
       + '<input type="text" class="wi-weight" value="' + escAttr(formatWeightPct(it.weight)) + '" placeholder="0%" oninput="onProjWiWeightInput(' + idx + ',this)" onblur="onProjWiWeightBlur(' + idx + ',this)">'
       + '</div>';
   });
   box.innerHTML = html;
+  refreshFormSelects();
+  syncProjWiMemberRows();
   updateProjWiCostRemain();
   updateProjWiWeightRemain();
 }
@@ -2491,14 +2515,15 @@ function addS(){
   var start = getNwProjStartDate();
   var end = getNwProjEndDate() || (start ? tsToDateInput(dateInputToTs(start) + 6 * 86400000) : '');
   var r=document.createElement('div');r.className='srow';
-  r.innerHTML='<input type="text" class="wi-name" placeholder="工作項目名稱"><input type="date" class="wi-start" value="' + escAttr(start) + '"><input type="date" class="wi-end" value="' + escAttr(end) + '"><select class="wi-member" data-members></select><input type="text" class="wi-cost money-input" placeholder="NT$0"><input type="text" class="wi-weight" placeholder="0%">';
+  r.innerHTML='<input type="text" class="wi-name" placeholder="工作項目名稱"><input type="date" class="wi-start" value="' + escAttr(start) + '"><input type="date" class="wi-end" value="' + escAttr(end) + '"><select class="wi-member" data-members></select><select class="wi-exec-member" data-members></select><input type="text" class="wi-cost money-input" placeholder="NT$0"><input type="text" class="wi-weight" placeholder="0%">';
   document.getElementById('sl').appendChild(r);
   fillSelectOptions(r.querySelector('.wi-member'), getMemberNames());
+  fillSelectOptions(r.querySelector('.wi-exec-member'), getMemberNames());
 }
 function workRowHtml() {
   var start = getNwProjStartDate();
   var end = getNwProjEndDate() || (start ? tsToDateInput(dateInputToTs(start) + 6 * 86400000) : '');
-  return '<div class="srow"><input type="text" class="wi-name" placeholder="工作項目名稱"><input type="date" class="wi-start" value="' + escAttr(start) + '"><input type="date" class="wi-end" value="' + escAttr(end) + '"><select class="wi-member" data-members></select><input type="text" class="wi-cost money-input" placeholder="NT$0"><input type="text" class="wi-weight" placeholder="0%"></div>';
+  return '<div class="srow"><input type="text" class="wi-name" placeholder="工作項目名稱"><input type="date" class="wi-start" value="' + escAttr(start) + '"><input type="date" class="wi-end" value="' + escAttr(end) + '"><select class="wi-member" data-members></select><select class="wi-exec-member" data-members></select><input type="text" class="wi-cost money-input" placeholder="NT$0"><input type="text" class="wi-weight" placeholder="0%"></div>';
 }
 
 // ── 付款預覽 / 列印（元頂集團格式，同 payment-form GitHub Pages）──
@@ -2892,7 +2917,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v59';
+var APP_BUILD = '20260615v60';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
@@ -7935,9 +7960,16 @@ function openEditWorkItem(wiId) {
   refreshEditSelects();
   document.getElementById('ew-name').value = f['工作項目名稱'] || '';
   var assigneeSel = document.getElementById('ew-assignee');
-  var assigneeName = personName(f['負責人']);
+  var execSel = document.getElementById('ew-exec-partner');
+  var assigneeName = personName(f['負責夥伴']) || personName(f['負責人']);
+  var execName = personName(f['執行夥伴']);
   for (var i = 0; i < assigneeSel.options.length; i++) {
     if (assigneeSel.options[i].text === assigneeName) { assigneeSel.selectedIndex = i; break; }
+  }
+  if (execSel) {
+    for (var j = 0; j < execSel.options.length; j++) {
+      if (execSel.options[j].text === execName) { execSel.selectedIndex = j; break; }
+    }
   }
   document.getElementById('ew-end').value = f['截止日'] ? tsToDateInput(f['截止日']) : '';
   document.getElementById('ew-cost').value = f['可用成本'] ? 'NT$' + Math.round(f['可用成本']).toLocaleString() : '';
@@ -7955,7 +7987,9 @@ function saveEditWorkItem() {
   var rec = workitemsData.find(function(r){ return r.record_id === editingWiId; });
   var oldFields = rec ? {
     '工作項目名稱': rec.fields['工作項目名稱'] || '',
+    '負責夥伴': rec.fields['負責夥伴'],
     '負責人': rec.fields['負責人'],
+    '執行夥伴': rec.fields['執行夥伴'],
     '截止日': rec.fields['截止日'],
     '可用成本': rec.fields['可用成本']
   } : null;
@@ -7965,8 +7999,10 @@ function saveEditWorkItem() {
   var endVal = document.getElementById('ew-end').value;
   var fields = {
     '工作項目名稱': name,
-    '負責人': document.getElementById('ew-assignee').value
+    '負責夥伴': document.getElementById('ew-assignee').value
   };
+  var execVal = document.getElementById('ew-exec-partner').value;
+  if (execVal) fields['執行夥伴'] = execVal;
   if (endVal) fields['截止日'] = dateInputToTs(endVal);
   if (costRaw) fields['可用成本'] = parseInt(costRaw, 10);
   showConfirm({
@@ -8050,7 +8086,7 @@ function saveEditProject() {
 
 function refreshEditSelects() {
   var names = getMemberNames();
-  ['et-assignee', 'ew-assignee', 'ep-pm'].forEach(function(id) {
+  ['et-assignee', 'ew-assignee', 'ew-exec-partner', 'ep-pm'].forEach(function(id) {
     var sel = document.getElementById(id);
     if (sel) fillSelectOptions(sel, names);
   });
@@ -8137,6 +8173,7 @@ function preparePopup(id) {
     if (sl && !sl.children.length) {
       sl.innerHTML = workRowHtml();
       fillSelectOptions(sl.querySelector('.wi-member'), getMemberNames());
+      fillSelectOptions(sl.querySelector('.wi-exec-member'), getMemberNames());
     }
     onNwProjChange();
   }
@@ -8257,9 +8294,10 @@ function saveWorkItems() {
     var startVal = row.querySelector('.wi-start') && row.querySelector('.wi-start').value;
     var endVal = row.querySelector('.wi-end') && row.querySelector('.wi-end').value;
     var partner = row.querySelector('.wi-member') && row.querySelector('.wi-member').value;
+    var execPartner = row.querySelector('.wi-exec-member') && row.querySelector('.wi-exec-member').value;
     var cost = parseMoney(row.querySelector('.wi-cost') && row.querySelector('.wi-cost').value);
     var weight = parseWeight(row.querySelector('.wi-weight') && row.querySelector('.wi-weight').value);
-    items.push({ name: name, start: startVal, end: endVal, partner: partner, cost: cost, weight: weight });
+    items.push({ name: name, start: startVal, end: endVal, partner: partner, execPartner: execPartner, cost: cost, weight: weight });
   });
   if (!items.length) { alert('請至少新增一個工作項目'); return; }
 

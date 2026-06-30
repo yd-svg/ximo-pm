@@ -361,7 +361,7 @@ function isRetryableWriteError(err) {
 
 async function enrichPersonFieldsForWrite(tenantToken, cfg, rawFields) {
   const out = Object.assign({}, rawFields || {});
-  const personKeys = ['主PM', '負責PM', '負責夥伴', '負責人', '設計師', '申請人'];
+  const personKeys = ['主PM', '負責PM', '負責夥伴', '執行夥伴', '負責人', '設計師', '申請人'];
   let members = null;
 
   async function loadMembers() {
@@ -1173,7 +1173,7 @@ const ARCHIVE_FIELD_ALIASES = {
   '封存連結': ['Wiki連結', 'Wiki存放位置', '知識庫連結']
 };
 
-const ARCHIVE_PERSON_KEYS = ['主PM', '負責PM', '負責夥伴', '負責人', '設計師', '申請人'];
+const ARCHIVE_PERSON_KEYS = ['主PM', '負責PM', '負責夥伴', '執行夥伴', '負責人', '設計師', '申請人'];
 
 const BITABLE_LINK_FIELD_TYPES = { 18: 1, 21: 1 };
 const BITABLE_SKIP_FIELD_TYPES = { 22: 1, 23: 1, 1001: 1, 1002: 1, 1003: 1, 1004: 1 };
