@@ -2448,12 +2448,12 @@ async function refreshUserAccessToken(refreshToken) {
 
 function buildAuthUrl(redirectUri) {
   const q = new URLSearchParams({
-    client_id: APP_ID,
+    app_id: APP_ID,
     redirect_uri: redirectUri,
     state: 'ximo_pm',
     scope: 'offline_access'
   });
-  return 'https://accounts.larksuite.com/open-apis/authen/v1/authorize?' + q.toString();
+  return BASE_URL + '/authen/v1/index?' + q.toString();
 }
 
 function getOAuthSetupHint(redirectUri) {
