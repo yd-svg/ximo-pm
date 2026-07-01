@@ -2759,6 +2759,33 @@ async function checkMemberAuthorization(userAccessToken) {
   };
 }
 
+const BOOTSTRAP_TABLE_KEYS = ['projects', 'workitems', 'tasks', 'expenses', 'designs', 'journal', 'members'];
+
+async function fetchTableRecordsSafe(token, tableKey) {
+  const tableId = tableIdFor(tableKey);
+  if (!tableId) return { records: [], error: 'Invalid table: ' + tableKey };
+  try {
+    const tableAppToken = appTokenForTable(tableKey);
+    const records = await getRecords(token, tableId, tableAppToken);
+    return { records: records };
+  } catch (err) {
+    console.error('bootstrap ' + tableKey, err);
+    return { records: [], error: err.message || String(err) };
+  }
+}
+
+async function fetchBootstrapPayload() {
+  const token = await getToken();
+  const parts = await Promise.all(BOOTSTRAP_TABLE_KEYS.map(function(key) {
+    return fetchTableRecordsSafe(token, key);
+  }));
+  const payload = { ok: true, ts: Date.now() };
+  BOOTSTRAP_TABLE_KEYS.forEach(function(key, i) {
+    payload[key] = parts[i];
+  });
+  return payload;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -2816,6 +2843,11 @@ export default async function handler(req, res) {
       const userAccessToken = extractUserAccessToken(req);
       const result = await checkMemberAuthorization(userAccessToken);
       return res.status(200).json(result);
+    }
+
+    if (action === 'bootstrap' && req.method === 'GET') {
+      const payload = await fetchBootstrapPayload();
+      return res.status(200).json(payload);
     }
 
     if (action === 'auth-refresh' && req.method === 'POST') {
