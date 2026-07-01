@@ -2143,10 +2143,26 @@ async function archiveProject(token, projectId, wikiUrl, userAccessToken) {
   };
 }
  
-async function sendWebhook(text) {
-  const url = process.env.LARK_WEBHOOK_URL;
-  if (!url) return { ok: false, skipped: true, reason: 'LARK_WEBHOOK_URL not set' };
-  const keyword = (process.env.LARK_WEBHOOK_KEYWORD || '').trim();
+function parseWebhookUrls(raw) {
+  return String(raw || '')
+    .split(/[\n,]+/)
+    .map(function(u) { return u.trim(); })
+    .filter(Boolean);
+}
+
+function getWebhookUrls() {
+  const urls = [];
+  const add = function(list) {
+    list.forEach(function(u) {
+      if (urls.indexOf(u) < 0) urls.push(u);
+    });
+  };
+  add(parseWebhookUrls(process.env.LARK_WEBHOOK_URL));
+  add(parseWebhookUrls(process.env.LARK_WEBHOOK_URL_EXTRA));
+  return urls;
+}
+
+async function sendWebhookToUrl(url, text, keyword) {
   let bodyText = String(text || '');
   if (keyword && bodyText.indexOf(keyword) < 0) bodyText = keyword + '\n' + bodyText;
   const res = await fetch(url, {
@@ -2160,9 +2176,33 @@ async function sendWebhook(text) {
     const hint = errMsg.indexOf('Key Words') >= 0
       ? errMsg + '（請在 Vercel 設定 LARK_WEBHOOK_KEYWORD 為機器人關鍵字，或關閉機器人關鍵字驗證）'
       : errMsg;
-    return { ok: false, error: hint, raw: data };
+    return { ok: false, error: hint, raw: data, url: url };
   }
-  return { ok: true, raw: data };
+  return { ok: true, raw: data, url: url };
+}
+
+async function sendWebhook(text) {
+  const urls = getWebhookUrls();
+  if (!urls.length) return { ok: false, skipped: true, reason: 'LARK_WEBHOOK_URL not set' };
+  const keyword = (process.env.LARK_WEBHOOK_KEYWORD || '').trim();
+  const results = await Promise.all(urls.map(function(url) {
+    return sendWebhookToUrl(url, text, keyword);
+  }));
+  const failed = results.filter(function(r) { return !r.ok; });
+  if (!failed.length) {
+    return { ok: true, count: results.length, results: results };
+  }
+  if (failed.length === results.length) {
+    return Object.assign({ ok: false, count: results.length, results: results }, failed[0]);
+  }
+  return {
+    ok: true,
+    partial: true,
+    count: results.length,
+    failedCount: failed.length,
+    results: results,
+    error: failed.map(function(r) { return r.error; }).filter(Boolean).join('；')
+  };
 }
 
 function paymentApplicantText(fields) {
@@ -2893,7 +2933,8 @@ export default async function handler(req, res) {
           hasAppToken: !!APP_TOKEN,
           hasAppTokenBackend: !!(process.env.LARK_APP_TOKEN_BACKEND || '').trim(),
           hasAppTokenPayments: !!APP_TOKEN_PAYMENTS,
-          hasWebhook: !!process.env.LARK_WEBHOOK_URL,
+          hasWebhook: getWebhookUrls().length > 0,
+          webhookCount: getWebhookUrls().length,
           hasWebhookKeyword: !!process.env.LARK_WEBHOOK_KEYWORD,
           paymentNotifyMode: paymentNotifyMode(),
           paymentsTableMain: paymentsFrontConfig().tableId,
