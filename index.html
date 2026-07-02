@@ -17,7 +17,7 @@
   --shadow:0 2px 14px rgba(0,0,0,0.09);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);color:var(--text);height:100vh;height:100dvh;overflow:hidden;font-size:13px}
+body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);color:var(--text);height:100vh;height:100dvh;overflow:hidden;font-size:14px}
 
 /* topbar */
 #topbar{position:fixed;top:0;left:0;right:0;height:var(--th);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:12px;z-index:100}
@@ -86,7 +86,7 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .pr .arr{font-size:9px;opacity:.85;transition:transform .2s;flex-shrink:0;line-height:18px;padding:0 2px}
 .pr.open .arr{transform:rotate(90deg)}
 .pr-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;width:100%}
-.pr-name{display:block;font-size:12px;font-weight:600;line-height:1.4;word-break:break-word;width:100%}
+.pr-name{display:block;font-size:13px;font-weight:600;line-height:1.4;word-break:break-word;width:100%}
 .pr-sub{display:flex;align-items:center;gap:4px;min-width:0;width:100%}
 .pr-meta{font-size:10px;opacity:.9;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
 .pr-pct{font-size:10px;font-weight:700;background:rgba(255,255,255,.22);padding:2px 6px;border-radius:10px;flex-shrink:0}
@@ -124,8 +124,8 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .ti:hover .bdel{opacity:1}
 .ti .bdel:hover{color:#c0392b;background:#fff3f3}
 .tit{display:flex;align-items:flex-start;justify-content:space-between;gap:5px}
-.tn{font-size:12px;font-weight:600}
-.tm{font-size:10px;color:var(--t3);margin-top:1px}
+.tn{font-size:13px;font-weight:600}
+.tm{font-size:11px;color:var(--t3);margin-top:1px}
 .tr2{text-align:right;flex-shrink:0}
 .td2{font-size:11px;font-weight:600}
 .tds{font-size:10px;color:var(--warn);font-weight:700}
@@ -133,6 +133,17 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .tpb{height:2px;background:var(--border);border-radius:1px;margin-top:5px;overflow:hidden}
 .tpf{height:100%;border-radius:1px}
 .ftag{padding:2px 7px;border-radius:20px;font-size:10px;cursor:pointer;border:1px solid var(--border);white-space:nowrap;color:var(--t2);background:var(--sf2);transition:all .15s;flex-shrink:0}
+.task-group-toggle{display:flex;gap:2px;padding:2px;margin:0 8px 6px;border:1px solid var(--border);border-radius:20px;background:var(--sf2);flex-shrink:0}
+.task-group-btn{flex:1;padding:4px 6px;border:none;border-radius:18px;background:transparent;font-size:10px;font-weight:600;color:var(--t2);cursor:pointer;line-height:1.2;transition:background .15s,color .15s;white-space:nowrap}
+.task-group-btn.active{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.todo-assignee-group{margin-bottom:4px}
+.todo-assignee-hdr{display:flex;align-items:center;gap:5px;padding:6px 8px;border-radius:8px;background:var(--sf2);cursor:pointer;user-select:none;font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px}
+.todo-assignee-hdr:hover{background:#eeebe6}
+.todo-assignee-hdr .arr{font-size:9px;color:var(--t3);transition:transform .2s;flex-shrink:0}
+.todo-assignee-hdr.open .arr{transform:rotate(90deg)}
+.todo-assignee-count{font-size:10px;color:var(--t3);font-weight:600;margin-left:auto}
+.todo-assignee-body{display:none;padding-left:4px}
+.todo-assignee-body.open{display:block}
 
 /* C content */
 #content{flex:1;min-height:0;overflow-y:auto;background:var(--bg);border-radius:var(--r);padding:10px;-webkit-overflow-scrolling:touch}
@@ -158,7 +169,7 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .todo-sec-count{font-size:11px;color:var(--t3);font-weight:600;margin-left:2px}
 .todo-card{padding:10px 11px;border-radius:10px;background:#fff;border:1px solid var(--border);margin-bottom:6px;cursor:pointer;transition:border-color .12s,box-shadow .12s}
 .todo-card:hover{border-color:var(--t3);box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.todo-card-title{font-size:12px;font-weight:700;color:var(--text);line-height:1.35}
+.todo-card-title{font-size:13px;font-weight:700;color:var(--text);line-height:1.35}
 .todo-card-meta{font-size:10px;color:var(--t3);margin-top:4px;line-height:1.4}
 .todo-empty{font-size:11px;color:var(--t3);padding:2px 0 4px}
 .todo-user-label{font-size:10px;color:var(--t3);margin-top:2px;line-height:1.4}
@@ -342,24 +353,29 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .gfh span{font-size:10px;font-weight:600;color:var(--t3)}
 .grl{height:40px;padding:5px 10px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;justify-content:center}
 .grl:last-child{border-bottom:none}
-.grn{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.grm{font-size:9px;color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grn{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grm{font-size:10px;color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gsw{flex:1;overflow-x:auto;overflow-y:hidden;min-width:0;overscroll-behavior-x:contain;touch-action:pan-x;-webkit-overflow-scrolling:touch}
 .gf{touch-action:pan-y}
 .gtc{display:inline-block}
 .gmr{display:flex;height:26px;border-bottom:1px solid var(--border);background:var(--sf2)}
 .gmc{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--t2);border-right:1px solid var(--border);flex-shrink:0}
 .gdr{display:flex;height:26px;border-bottom:1px solid var(--border);background:var(--sf2);position:relative}
-.gdc{display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--t3);border-right:1px solid rgba(226,221,216,0.4);flex-shrink:0}
+.gdc{display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--t3);border-right:1px solid rgba(226,221,216,0.4);flex-shrink:0}
 .gdc.tdc{background:rgba(45,106,79,.08);color:var(--report);font-weight:700}
 .gtr{height:40px;border-bottom:1px solid var(--border);position:relative}
 .gtr:last-child{border-bottom:none}
-.gbar{position:absolute;height:22px;top:50%;transform:translateY(-50%);border-radius:6px;display:flex;align-items:center;padding:0 8px;font-size:10px;color:rgba(255,255,255,.98);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;cursor:pointer;min-width:4px;box-shadow:0 1px 3px rgba(0,0,0,.1);pointer-events:auto;z-index:1}
+.gbar{position:absolute;height:24px;top:50%;transform:translateY(-50%);border-radius:6px;display:flex;align-items:center;padding:0 8px;font-size:11px;color:rgba(255,255,255,.98);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;cursor:pointer;min-width:4px;box-shadow:0 1px 3px rgba(0,0,0,.1);pointer-events:auto;z-index:1}
 .gbar.overdue{background:var(--danger)!important}
 .gbar.gbar-mine{z-index:3;border:2.5px solid #111!important;box-sizing:border-box;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.28)}
 .gbar.gbar-mine.overdue{background:var(--danger)!important;border-color:#111!important}
 .gbar.gbar-dim{z-index:2}
-.gbar:hover{z-index:4;filter:brightness(1.08)}
+.gbar.gbar-done{background:#b8b8b8!important;color:#888!important;opacity:.72;border:none!important;box-shadow:none!important;text-decoration:line-through;font-weight:400!important;filter:grayscale(1)}
+.gbar.gbar-done.gbar-mine{background:#a8a8a8!important;color:#777!important;border:1.5px solid #bbb!important;opacity:.75}
+.gbar.gbar-done:hover{filter:grayscale(1);opacity:.82}
+.gbar-done-icon{flex-shrink:0;margin-right:4px;font-size:10px;font-weight:700;text-decoration:none;color:#666}
+.gbar:hover:not(.gbar-done){z-index:4;filter:brightness(1.08)}
+.gbar.gbar-done:hover{z-index:2}
 .tline{position:absolute;top:0;bottom:0;width:2px;background:var(--report);z-index:5;pointer-events:none}
 .tlineh{position:absolute;top:0;width:2px;height:52px;background:var(--report);z-index:5;pointer-events:none}
 .gb.week-fit .gsw{overflow-x:hidden}
@@ -742,6 +758,11 @@ button.btn-loading::after{content:'…';margin-left:2px}
   <div class="lp-card lp-task-card">
     <div class="bs">
       <div class="bh"><span class="sl">任務清單</span><button class="badd" onclick="openPopup('pp-task')">＋ 新增</button></div>
+      <div class="task-group-toggle" id="task-group-toggle">
+        <button type="button" class="task-group-btn active" data-mode="due" onclick="setTaskGroupMode('due')">依到期日</button>
+        <button type="button" class="task-group-btn" data-mode="assignee" onclick="setTaskGroupMode('assignee')">依負責人</button>
+        <button type="button" class="task-group-btn" data-mode="project" onclick="setTaskGroupMode('project')">依標案</button>
+      </div>
       <div class="ft" id="task-filters"></div>
       <div class="tl2" id="task-list-body">
         <div style="padding:12px;color:var(--t3);font-size:11px">載入中...</div>
@@ -919,7 +940,7 @@ button.btn-loading::after{content:'…';margin-left:2px}
   </details>
 </div><div class="ppf pp-proj-foot"><button type="button" class="proc-btn-cancel" onclick="closeProcProjPopup(event)">取消</button><button type="button" class="proc-btn-confirm" id="np-save-btn" onclick="saveProjectImport()" disabled>確認新增標案</button></div></div></div>
 
-<div class="po" id="pp-work"><div class="pp ppw"><div class="pph"><h3>建立標案的工作項目</h3><button class="ppc" onclick="cl('pp-work')">✕</button></div><div class="ppb"><div class="fg"><label>標案</label><select id="nw-proj" onchange="onNwProjChange()"></select></div><div class="wi-row-hdr"><span>工作項目名稱</span><span>開始日期</span><span>結束日期</span><span>負責夥伴</span><span>執行夥伴</span><span>可用成本</span><span>權重</span></div><div class="slist" id="sl"></div><button class="bads" onclick="addS()">＋ 新增工作項目</button></div><div class="ppf"><button class="bcan" onclick="cl('pp-work')">取消</button><button class="bpri" onclick="saveWorkItems()">新增</button></div></div></div>
+<div class="po" id="pp-work"><div class="pp ppw"><div class="pph"><h3>建立標案的工作項目</h3><button class="ppc" onclick="cl('pp-work')">✕</button></div><div class="ppb"><div class="fg"><label>標案</label><select id="nw-proj" onchange="onNwProjChange()"></select></div><div class="wi-row-hdr"><span>工作項目名稱</span><span>開始日期</span><span>結束日期</span><span>負責夥伴</span><span>執行夥伴</span><span>可用成本</span><span>權重</span></div><div class="slist" id="sl"></div><p id="nw-wi-weight-remain" class="proc-wi-remain" style="margin:4px 0 8px"></p><button class="bads" onclick="addS()">＋ 新增工作項目</button></div><div class="ppf"><button class="bcan" onclick="cl('pp-work')">取消</button><button class="bpri" onclick="saveWorkItems()">新增</button></div></div></div>
 
 <div class="po" id="pp-task"><div class="pp"><div class="pph"><h3>建立新任務</h3><button class="ppc" onclick="cl('pp-task')">✕</button></div><div class="ppb"><div class="fg"><label>任務名稱</label><input type="text" id="nt-name" placeholder="拜訪OO茶主"></div><div class="fg"><label>負責人</label><select id="nt-assignee" data-members></select></div><div class="fg"><label>所屬工作項目</label><select id="nt-wi"></select></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:11px"><div class="fg" style="margin:0"><label>開始日期</label><input type="date" id="nt-start"></div><div class="fg" style="margin:0"><label>預計完成日</label><input type="date" id="nt-due"></div></div><div class="fg"><label>進度狀態</label><select id="nt-status"></select></div></div><div class="ppf"><button class="bcan" onclick="cl('pp-task')">取消</button><button class="bpri" onclick="saveTask()">新增</button></div></div></div>
 
@@ -1022,6 +1043,7 @@ button.btn-loading::after{content:'…';margin-left:2px}
   <div class="fg"><label>起始日（合約）</label><div id="ew-start-hint" class="fg-hint" style="padding:8px 10px;background:var(--sf2);border-radius:var(--rs);font-size:12px;color:var(--t2)">依標案合約開始日</div></div>
   <div class="fg"><label>截止日</label><input type="date" id="ew-end"></div>
   <div class="fg"><label>可用成本</label><input type="text" class="money-input" id="ew-cost" placeholder="NT$0"></div>
+  <div class="fg"><label>權重<span id="ew-weight-remain" class="proc-wi-remain"></span></label><input type="text" id="ew-weight" placeholder="例如 20%" oninput="updateEditWiWeightRemain()" onblur="onEditWiWeightBlur()"></div>
 </div><div class="ppf"><button class="bcan" onclick="cl('pp-edit-wi')">取消</button><button class="bpri" onclick="saveEditWorkItem()">儲存</button></div></div></div>
 
 <!-- 修改標案 -->
@@ -2201,8 +2223,69 @@ function updateProjWiWeightRemain() {
   var el = document.getElementById('np-wi-weight-remain');
   if (!el) return;
   var remain = 100 - getProjWiWeightAllocated();
-  el.textContent = '尚未分配權重：' + remain + '%';
+  el.textContent = formatWeightRemainLabel(remain);
   el.classList.toggle('over', remain < 0);
+}
+
+function formatWeightRemainLabel(remain) {
+  remain = Math.round(remain);
+  if (remain < 0) return '權重超出 ' + Math.abs(remain) + '%（請調整）';
+  if (remain === 0) return '權重已分配完畢（100%）';
+  return '剩餘 ' + remain + '% 權重可分配';
+}
+
+function getProjectWiWeightAllocated(projId, excludeWiId) {
+  var proj = projectsData.find(function(p) { return p.record_id === projId; });
+  if (!proj) return 0;
+  var sum = 0;
+  getWorkitemsForProject(proj).forEach(function(wi) {
+    if (excludeWiId && wi.record_id === excludeWiId) return;
+    var w = parseWeightNum(wi.fields);
+    if (w != null) sum += w;
+  });
+  return sum;
+}
+
+function updateEditWiWeightRemain() {
+  var el = document.getElementById('ew-weight-remain');
+  if (!el || !editingWiId) return;
+  var rec = workitemsData.find(function(r) { return r.record_id === editingWiId; });
+  var proj = rec ? getProjectForWorkItem(rec) : null;
+  if (!proj) { el.textContent = ''; return; }
+  var others = getProjectWiWeightAllocated(proj.record_id, editingWiId);
+  var current = parseWeightPctInput(document.getElementById('ew-weight') && document.getElementById('ew-weight').value);
+  var remain = 100 - others - current;
+  el.textContent = formatWeightRemainLabel(remain);
+  el.classList.toggle('over', remain < 0);
+}
+
+function onEditWiWeightBlur() {
+  var el = document.getElementById('ew-weight');
+  if (!el) return;
+  var n = parseWeightPctInput(el.value);
+  el.value = n ? formatWeightPct(n) : '';
+  updateEditWiWeightRemain();
+}
+
+function updateNwWiWeightRemain() {
+  var el = document.getElementById('nw-wi-weight-remain');
+  if (!el) return;
+  var projId = document.getElementById('nw-proj') && document.getElementById('nw-proj').value;
+  var existing = projId ? getProjectWiWeightAllocated(projId, null) : 0;
+  var newSum = 0;
+  document.querySelectorAll('#sl .srow .wi-weight').forEach(function(input) {
+    newSum += parseWeightPctInput(input.value);
+  });
+  var remain = 100 - existing - newSum;
+  el.textContent = formatWeightRemainLabel(remain);
+  el.classList.toggle('over', remain < 0);
+}
+
+function onNwWiWeightBlur(input) {
+  if (!input) return;
+  var n = parseWeightPctInput(input.value);
+  input.value = n ? formatWeightPct(n) : '';
+  updateNwWiWeightRemain();
 }
 
 function onProjWiWeightInput(idx, input) {
@@ -2562,15 +2645,16 @@ function addS(){
   var start = getNwProjStartDate();
   var end = getNwProjEndDate() || (start ? tsToDateInput(dateInputToTs(start) + 6 * 86400000) : '');
   var r=document.createElement('div');r.className='srow';
-  r.innerHTML='<input type="text" class="wi-name" placeholder="工作項目名稱"><input type="date" class="wi-start" value="' + escAttr(start) + '"><input type="date" class="wi-end" value="' + escAttr(end) + '"><select class="wi-member" data-members></select><select class="wi-exec-member" data-members></select><input type="text" class="wi-cost money-input" placeholder="NT$0"><input type="text" class="wi-weight" placeholder="0%">';
+  r.innerHTML='<input type="text" class="wi-name" placeholder="工作項目名稱"><input type="date" class="wi-start" value="' + escAttr(start) + '"><input type="date" class="wi-end" value="' + escAttr(end) + '"><select class="wi-member" data-members></select><select class="wi-exec-member" data-members></select><input type="text" class="wi-cost money-input" placeholder="NT$0"><input type="text" class="wi-weight" placeholder="0%" oninput="updateNwWiWeightRemain()" onblur="onNwWiWeightBlur(this)">';
   document.getElementById('sl').appendChild(r);
   fillSelectOptions(r.querySelector('.wi-member'), getMemberNames());
   fillSelectOptions(r.querySelector('.wi-exec-member'), getMemberNames());
+  updateNwWiWeightRemain();
 }
 function workRowHtml() {
   var start = getNwProjStartDate();
   var end = getNwProjEndDate() || (start ? tsToDateInput(dateInputToTs(start) + 6 * 86400000) : '');
-  return '<div class="srow"><input type="text" class="wi-name" placeholder="工作項目名稱"><input type="date" class="wi-start" value="' + escAttr(start) + '"><input type="date" class="wi-end" value="' + escAttr(end) + '"><select class="wi-member" data-members></select><select class="wi-exec-member" data-members></select><input type="text" class="wi-cost money-input" placeholder="NT$0"><input type="text" class="wi-weight" placeholder="0%"></div>';
+  return '<div class="srow"><input type="text" class="wi-name" placeholder="工作項目名稱"><input type="date" class="wi-start" value="' + escAttr(start) + '"><input type="date" class="wi-end" value="' + escAttr(end) + '"><select class="wi-member" data-members></select><select class="wi-exec-member" data-members></select><input type="text" class="wi-cost money-input" placeholder="NT$0"><input type="text" class="wi-weight" placeholder="0%" oninput="updateNwWiWeightRemain()" onblur="onNwWiWeightBlur(this)"></div>';
 }
 
 // ── 付款預覽 / 列印（元頂集團格式，同 payment-form GitHub Pages）──
@@ -2865,6 +2949,7 @@ function paintGantt(key,proj,vs,ve,total,cw){
     return '#' + [r, g, b].map(function(n) { return n.toString(16).padStart(2, '0'); }).join('');
   }
   function ganttBarPaintStyle(bar, projColor) {
+    if (bar.done) return { bgStyle: '', extraClass: ' gbar-done' };
     var mine = isRecordMine(bar.taskFields || {}, bar.design ? 'design' : 'task');
     if (mine) {
       if (bar.overdue) return { bgStyle: '', extraClass: ' gbar-mine' };
@@ -2899,10 +2984,13 @@ function paintGantt(key,proj,vs,ve,total,cw){
   var tlHTML=toff>=0&&toff<=total?'<div class="tline" style="left:'+tx+'px"></div>':'';
   var tlHdr=toff>=0&&toff<=total?'<div class="tlineh" style="left:'+tx+'px"></div>':'';
 
+  var GANTT_BAR_H = 24;
+  var GANTT_BAR_STEP = 26;
+
   // fixed left
   var fixH='<div class="gfh"><span>工作項目</span></div>';
   proj.rows.forEach(function(row){
-    var rowH = Math.max(40, row.bars.length * 20 + 12);
+    var rowH = Math.max(44, row.bars.length * GANTT_BAR_STEP + 12);
     fixH+='<div class="grl" style="height:'+rowH+'px"><div class="grn">'+escHtml(row.n)+'</div><div class="grm">'+escHtml(row.m)+'</div></div>';
   });
 
@@ -2910,9 +2998,12 @@ function paintGantt(key,proj,vs,ve,total,cw){
   var tmH='<div class="gmr" style="width:'+tw+'px;position:relative">'+mHTML+tlHdr+'</div>';
   tmH+='<div class="gdr" style="width:'+tw+'px;position:relative">'+dHTML+'</div>';
   proj.rows.forEach(function(row){
-    var rowH = Math.max(40, row.bars.length * 20 + 12);
+    var rowH = Math.max(44, row.bars.length * GANTT_BAR_STEP + 12);
     var bH=tlHTML;
     var rowBars = row.bars.slice().sort(function(a, b) {
+      var ad = a.done ? 1 : 0;
+      var bd = b.done ? 1 : 0;
+      if (ad !== bd) return ad - bd;
       var am = isRecordMine(a.taskFields || {}, a.design ? 'design' : 'task') ? 1 : 0;
       var bm = isRecordMine(b.taskFields || {}, b.design ? 'design' : 'task') ? 1 : 0;
       return am - bm;
@@ -2922,17 +3013,20 @@ function paintGantt(key,proj,vs,ve,total,cw){
       var bx=dif(vs,bs)*CW,bw=(dif(bs,be)+1)*CW-2;
       if(bx+bw<0||bx>tw)return;
       var ax=Math.max(0,bx),aw=Math.min(bw,tw-ax);
-      var top = 4 + bi * 20;
+      var top = 4 + bi * GANTT_BAR_STEP;
       var clickAttr = '';
       if (bar.id && bar.design) clickAttr = ' onclick="openDesignDetail(\'' + bar.id + '\')"';
       else if (bar.id) clickAttr = ' onclick="openTaskDetail(\'' + bar.id + '\')"';
-      var overdueClass = bar.overdue ? ' overdue' : '';
+      var overdueClass = bar.overdue && !bar.done ? ' overdue' : '';
       var paint = ganttBarPaintStyle(bar, proj.color);
-      var borderStyle = paint.extraClass.indexOf('gbar-mine') >= 0
+      var borderStyle = bar.done ? '' : (paint.extraClass.indexOf('gbar-mine') >= 0
         ? ''
-        : (bar.design ? 'border:1px dashed rgba(255,255,255,.55);box-sizing:border-box;' : '');
+        : (bar.design ? 'border:1px dashed rgba(255,255,255,.55);box-sizing:border-box;' : ''));
       var barLabel = bar.design ? ('設計·' + bar.l) : bar.l;
-      bH+='<div class="gbar'+overdueClass+paint.extraClass+'" style="left:'+ax+'px;width:'+aw+'px;top:'+top+'px;transform:none;height:16px;'+paint.bgStyle+borderStyle+'"'+clickAttr+' title="'+escAttr(barLabel)+'">'+escHtml(barLabel)+'</div>';
+      var labelHtml = bar.done
+        ? ('<span class="gbar-done-icon">✓</span><span style="text-decoration:line-through">' + escHtml(barLabel) + '</span>')
+        : escHtml(barLabel);
+      bH+='<div class="gbar'+overdueClass+paint.extraClass+'" style="left:'+ax+'px;width:'+aw+'px;top:'+top+'px;transform:none;height:'+GANTT_BAR_H+'px;'+paint.bgStyle+borderStyle+'"'+clickAttr+' title="'+escAttr(barLabel)+'">'+labelHtml+'</div>';
     });
     tmH+='<div class="gtr" style="width:'+tw+'px;height:'+rowH+'px">'+bH+'</div>';
   });
@@ -3002,7 +3096,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v75';
+var APP_BUILD = '20260615v77';
 var DATA_CACHE_KEY = 'ximo-bootstrap-cache-v1';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
@@ -5109,6 +5203,62 @@ function renderProjects() {
 }
 
 // ── 渲染 B 區任務清單 ──
+var TASK_GROUP_STORAGE_KEY = 'ximo-task-group-mode';
+var taskGroupMode = 'due';
+var currentTaskFilterProj = '';
+
+function initTaskGroupMode() {
+  try {
+    var saved = localStorage.getItem(TASK_GROUP_STORAGE_KEY);
+    if (saved === 'assignee' || saved === 'project' || saved === 'due') taskGroupMode = saved;
+  } catch (e) {}
+  document.querySelectorAll('.task-group-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.mode === taskGroupMode);
+  });
+}
+
+function setTaskGroupMode(mode) {
+  taskGroupMode = (mode === 'assignee' || mode === 'project') ? mode : 'due';
+  try { localStorage.setItem(TASK_GROUP_STORAGE_KEY, taskGroupMode); } catch (e) {}
+  document.querySelectorAll('.task-group-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.mode === taskGroupMode);
+  });
+  renderTasks();
+}
+
+function renderTaskItemHtml(task) {
+  var html = '';
+  html += '<div class="ti" data-proj="' + escAttr(task.projName) + '" onclick="openTaskDetail(\'' + task.id + '\')">';
+  html += '<button type="button" class="bdel" title="修改任務" style="margin-right:2px;right:28px" onclick="event.stopPropagation();openEditTask(\'' + task.id + '\')">✎</button>';
+  html += '<button type="button" class="bdel" title="刪除任務" onclick="event.stopPropagation();deleteTask(\'' + task.id + '\',\'' + escAttr(task.name).replace(/'/g, "\\'") + '\')">×</button>';
+  html += '<div class="tit"><div><div class="tn">' + escHtml(task.name) + '</div>';
+  html += '<div class="tm">' + escHtml(task.wiName) + ' · ' + escHtml(task.assignee) + '</div></div>';
+  var remainDone = task.progress >= 100 || task.status === '已完成';
+  var remainCls = remainDone ? ' tds-done' : '';
+  html += '<div class="tr2"><div class="td2">' + escHtml(task.dueFull) + '</div><div class="tds' + remainCls + '">' + escHtml(task.remain) + '</div></div></div>';
+  html += '</div>';
+  return html;
+}
+
+function applyTaskListFilter(proj) {
+  currentTaskFilterProj = proj || '';
+  document.querySelectorAll('#task-list-body .ti').forEach(function(item) {
+    var match = !proj || item.dataset.proj === proj;
+    item.style.display = match ? '' : 'none';
+  });
+  if (taskGroupMode !== 'due') {
+    document.querySelectorAll('#task-list-body .tgl').forEach(function(g) {
+      var next = g.nextElementSibling;
+      var hasVisible = false;
+      while (next && !next.classList.contains('tgl')) {
+        if (next.classList.contains('ti') && next.style.display !== 'none') hasVisible = true;
+        next = next.nextElementSibling;
+      }
+      g.style.display = hasVisible ? '' : 'none';
+    });
+  }
+}
+
 function renderTasks() {
   var wiMap = {};
   workitemsData.forEach(function(wi) {
@@ -5118,7 +5268,7 @@ function renderTasks() {
     };
   });
 
-  var grouped = {};
+  var allTasks = [];
   tasksData.forEach(function(rec) {
     var f = rec.fields;
     var wiIds = getLinkIds(f['所屬工作項目']);
@@ -5129,23 +5279,25 @@ function renderTasks() {
     if (projRec && !isProjectVisible(projRec)) return;
     if (projRec && !isProjectSelected(projRec)) return;
     var progress = parseProgressVal(f['進度狀態'], f['進度數值']);
-    if (!grouped[projName]) grouped[projName] = [];
-    grouped[projName].push({
+    allTasks.push({
       id: rec.record_id,
       name: f['任務名稱'] || '未命名',
-      assignee: personName(f['負責人']),
+      assignee: personName(f['負責人']) || '未指定',
       wiName: wi ? wi.name : '',
       dueTs: f['預計完成日'],
       dueFull: f['預計完成日'] ? fmtDate(f['預計完成日']) : '—',
       remain: taskRemainLabel(f['預計完成日'], progress, f['進度狀態']),
       progress: progress,
       status: f['進度狀態'] || '未開始',
-      wiId: wiId
+      wiId: wiId,
+      projName: projName
     });
   });
 
-  Object.keys(grouped).forEach(function(proj) {
-    grouped[proj].sort(function(a,b){ return (a.dueTs||0)-(b.dueTs||0); });
+  allTasks.sort(function(a, b) {
+    var ad = a.dueTs || 9999999999999;
+    var bd = b.dueTs || 9999999999999;
+    return ad - bd;
   });
 
   var html = '';
@@ -5154,42 +5306,56 @@ function renderTasks() {
     projColors[rec.fields['標案名稱'] || ''] = PROJECT_COLORS[i % PROJECT_COLORS.length];
   });
 
-  function renderGroup(pname, color) {
-    grouped[pname].forEach(function(task) {
-      html += '<div class="ti" data-proj="' + escAttr(pname) + '" onclick="openTaskDetail(\'' + task.id + '\')">';
-      html += '<button type="button" class="bdel" title="修改任務" style="margin-right:2px;right:28px" onclick="event.stopPropagation();openEditTask(\'' + task.id + '\')">✎</button>';
-      html += '<button type="button" class="bdel" title="刪除任務" onclick="event.stopPropagation();deleteTask(\'' + task.id + '\',\'' + escAttr(task.name).replace(/'/g, "\\'") + '\')">×</button>';
-      html += '<div class="tit"><div><div class="tn">' + task.name + '</div>';
-      html += '<div class="tm">' + task.wiName + ' · ' + task.assignee + '</div></div>';
-      var remainDone = task.progress >= 100 || task.status === '已完成';
-      var remainCls = remainDone ? ' tds-done' : '';
-      html += '<div class="tr2"><div class="td2">' + task.dueFull + '</div><div class="tds' + remainCls + '">' + escHtml(task.remain) + '</div></div></div>';
-      html += '</div>';
+  if (taskGroupMode === 'due' || taskGroupMode === 'project') {
+    var grouped = {};
+    allTasks.forEach(function(task) {
+      if (!grouped[task.projName]) grouped[task.projName] = [];
+      grouped[task.projName].push(task);
+    });
+
+    projectsData.forEach(function(rec) {
+      var pname = rec.fields['標案名稱'] || '';
+      if (!isProjectVisible(rec)) return;
+      if (!isProjectSelected(rec)) return;
+      if (!grouped[pname] || !grouped[pname].length) return;
+      var color = projColors[pname] || '#888';
+      html += '<div class="tgl" data-proj="' + escAttr(pname) + '"><div class="tgd" style="background:' + color + '"></div><span title="' + escAttr(pname) + '">' + escHtml(shortProjLabel(pname)) + '</span><span class="tc">' + grouped[pname].length + '</span></div>';
+      grouped[pname].forEach(function(task) {
+        html += renderTaskItemHtml(task);
+      });
+      delete grouped[pname];
+    });
+
+    Object.keys(grouped).forEach(function(pname) {
+      if (!grouped[pname].length) return;
+      var projRec = projectsData.find(function(p) { return (p.fields['標案名稱'] || '') === pname; });
+      if (projRec && !isProjectSelected(projRec)) return;
+      if (projRec && !isProjectVisible(projRec)) return;
+      html += '<div class="tgl" data-proj="' + escAttr(pname) + '"><div class="tgd" style="background:#888"></div><span title="' + escAttr(pname) + '">' + escHtml(shortProjLabel(pname)) + '</span><span class="tc">' + grouped[pname].length + '</span></div>';
+      grouped[pname].forEach(function(task) {
+        html += renderTaskItemHtml(task);
+      });
+    });
+  } else if (taskGroupMode === 'assignee') {
+    var byAssignee = {};
+    allTasks.forEach(function(task) {
+      var key = task.assignee || '未指定';
+      if (!byAssignee[key]) byAssignee[key] = [];
+      byAssignee[key].push(task);
+    });
+    Object.keys(byAssignee).sort(function(a, b) {
+      return a.localeCompare(b, 'zh-Hant');
+    }).forEach(function(name) {
+      html += '<div class="tgl" data-group="' + escAttr(name) + '"><span title="' + escAttr(name) + '">' + escHtml(name) + '</span><span class="tc">' + byAssignee[name].length + '</span></div>';
+      byAssignee[name].forEach(function(task) {
+        html += renderTaskItemHtml(task);
+      });
     });
   }
 
-  projectsData.forEach(function(rec) {
-    var pname = rec.fields['標案名稱'] || '';
-    if (!isProjectVisible(rec)) return;
-    if (!isProjectSelected(rec)) return;
-    if (!grouped[pname] || !grouped[pname].length) return;
-    var color = projColors[pname] || '#888';
-    html += '<div class="tgl" data-proj="' + escAttr(pname) + '"><div class="tgd" style="background:' + color + '"></div><span title="' + escAttr(pname) + '">' + escHtml(shortProjLabel(pname)) + '</span><span class="tc">' + grouped[pname].length + '</span></div>';
-    renderGroup(pname, color);
-    delete grouped[pname];
-  });
-
-  Object.keys(grouped).forEach(function(pname) {
-    if (!grouped[pname].length) return;
-    var projRec = projectsData.find(function(p) { return (p.fields['標案名稱'] || '') === pname; });
-    if (projRec && !isProjectSelected(projRec)) return;
-    if (projRec && !isProjectVisible(projRec)) return;
-    html += '<div class="tgl" data-proj="' + escAttr(pname) + '"><div class="tgd" style="background:#888"></div><span title="' + escAttr(pname) + '">' + escHtml(shortProjLabel(pname)) + '</span><span class="tc">' + grouped[pname].length + '</span></div>';
-    renderGroup(pname, '#888');
-  });
-
   document.getElementById('task-list-body').innerHTML = html || '<div style="padding:12px;color:var(--t3);font-size:11px">尚無任務</div>';
   updateFilterTags(projColors);
+  applyTaskListFilter(currentTaskFilterProj);
   renderTeamPanel();
 }
 
@@ -5257,12 +5423,37 @@ function buildTodoTaskItems(scope) {
   return buckets;
 }
 
-function renderTodoSection(title, dotClass, items, emptyText) {
+function renderTodoSection(title, dotClass, items, emptyText, groupByAssignee) {
   var html = '<div class="todo-section">';
   html += '<div class="todo-sec-hdr"><span class="todo-dot ' + dotClass + '"></span>' + title
     + '<span class="todo-sec-count">' + items.length + '</span></div>';
   if (!items.length) {
     html += '<div class="todo-empty">' + emptyText + '</div>';
+  } else if (groupByAssignee) {
+    var byAssignee = {};
+    items.forEach(function(task) {
+      var name = task.assignee || '未指定';
+      if (!byAssignee[name]) byAssignee[name] = [];
+      byAssignee[name].push(task);
+    });
+    Object.keys(byAssignee).sort(function(a, b) {
+      if (byAssignee[b].length !== byAssignee[a].length) return byAssignee[b].length - byAssignee[a].length;
+      return a.localeCompare(b, 'zh-Hant');
+    }).forEach(function(name) {
+      var groupItems = byAssignee[name];
+      html += '<div class="todo-assignee-group">';
+      html += '<div class="todo-assignee-hdr" onclick="toggleTodoAssigneeGroup(this)">';
+      html += '<span class="arr">▶</span><span>' + escHtml(name) + '</span>';
+      html += '<span class="todo-assignee-count">' + groupItems.length + ' 項</span></div>';
+      html += '<div class="todo-assignee-body">';
+      groupItems.forEach(function(task) {
+        html += '<div class="todo-card" onclick="openTaskDetail(\'' + task.id + '\')">';
+        html += '<div class="todo-card-title">' + escHtml(task.name) + '</div>';
+        html += '<div class="todo-card-meta">' + escHtml(task.projName) + ' · ' + escHtml(task.dueLabel) + '</div>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+    });
   } else {
     items.forEach(function(task) {
       html += '<div class="todo-card" onclick="openTaskDetail(\'' + task.id + '\')">';
@@ -5275,16 +5466,24 @@ function renderTodoSection(title, dotClass, items, emptyText) {
   return html;
 }
 
+function toggleTodoAssigneeGroup(hdr) {
+  if (!hdr) return;
+  hdr.classList.toggle('open');
+  var body = hdr.nextElementSibling;
+  if (body) body.classList.toggle('open');
+}
+
 function renderTeamPanel() {
   var area = document.getElementById('team-task-list');
   if (!area) return;
 
   var effectiveScope = getEffectiveTodoScope();
   var buckets = buildTodoTaskItems(effectiveScope);
+  var groupByAssignee = effectiveScope === 'all';
   var html = '';
-  html += renderTodoSection('已逾期', 'overdue', buckets.overdue, '無逾期任務');
-  html += renderTodoSection('今日到期', 'today', buckets.today, '今日無到期任務');
-  html += renderTodoSection('三天內到期', 'soon', buckets.soon, '三天內無到期任務');
+  html += renderTodoSection('已逾期', 'overdue', buckets.overdue, '無逾期任務', groupByAssignee);
+  html += renderTodoSection('今日到期', 'today', buckets.today, '今日無到期任務', groupByAssignee);
+  html += renderTodoSection('三天內到期', 'soon', buckets.soon, '三天內無到期任務', groupByAssignee);
   area.innerHTML = html;
 }
 
@@ -5323,15 +5522,7 @@ function filterTasks(el, proj) {
   });
   el.style.background = el.dataset.proj ? (el.style.borderColor || 'var(--accent)') : 'var(--accent)';
   el.style.color = '#fff';
-
-  document.querySelectorAll('#task-list-body .tgl').forEach(function(g) {
-    var match = !proj || g.dataset.proj === proj;
-    g.style.display = match ? '' : 'none';
-  });
-  document.querySelectorAll('#task-list-body .ti').forEach(function(item) {
-    var match = !proj || item.dataset.proj === proj;
-    item.style.display = match ? '' : 'none';
-  });
+  applyTaskListFilter(proj);
 }
 
 var DESIGN_GANTT_COLOR = '#d4a017';
@@ -5428,6 +5619,7 @@ function renderGanttFromData() {
         }
         var tProg = parseProgressVal(tf['進度狀態'], tf['進度數值']);
         var dueDiff = getDueDayDiff(tf['預計完成日']);
+        var tDone = tProg >= 100 || tf['進度狀態'] === '已完成';
         bars.push({
           s: toDateStr(tStart),
           e: toDateStr(tDue),
@@ -5435,7 +5627,8 @@ function renderGanttFromData() {
           o: 1,
           c: color,
           id: t.record_id,
-          overdue: tProg < 100 && dueDiff !== null && dueDiff < 0,
+          overdue: !tDone && tProg < 100 && dueDiff !== null && dueDiff < 0,
+          done: tDone,
           taskFields: tf
         });
       });
@@ -5449,6 +5642,7 @@ function renderGanttFromData() {
         var dProg = parseProgressVal(df['進度狀態'], df['進度數值']);
         var dueTs = df['成品交付日'] || df['完稿交付日'] || df['初稿交付日'];
         var dueDiff = dueTs ? getDueDayDiff(dueTs) : null;
+        var dDone = dProg >= 100 || df['進度狀態'] === '已完成';
         bars.push({
           s: toDateStr(range.start),
           e: toDateStr(range.end),
@@ -5457,7 +5651,8 @@ function renderGanttFromData() {
           c: DESIGN_GANTT_COLOR,
           design: true,
           id: d.record_id,
-          overdue: dProg < 100 && dueDiff !== null && dueDiff < 0,
+          overdue: !dDone && dProg < 100 && dueDiff !== null && dueDiff < 0,
+          done: dDone,
           taskFields: df
         });
       });
@@ -8491,7 +8686,7 @@ function saveEditTask() {
 }
 
 function onNwProjChange() {
-  /* 日期由每列開始/結束欄位自行填寫 */
+  updateNwWiWeightRemain();
 }
 
 function openEditWorkItem(wiId) {
@@ -8515,6 +8710,9 @@ function openEditWorkItem(wiId) {
   }
   document.getElementById('ew-end').value = f['截止日'] ? tsToDateInput(f['截止日']) : '';
   document.getElementById('ew-cost').value = f['可用成本'] ? 'NT$' + Math.round(f['可用成本']).toLocaleString() : '';
+  var wNum = parseWeightNum(f);
+  document.getElementById('ew-weight').value = wNum != null && wNum > 0 ? formatWeightPct(wNum) : '';
+  updateEditWiWeightRemain();
   var hint = document.getElementById('ew-start-hint');
   if (hint) {
     var proj = getProjectForWorkItem(rec);
@@ -8533,12 +8731,22 @@ function saveEditWorkItem() {
     '負責人': rec.fields['負責人'],
     '執行夥伴': rec.fields['執行夥伴'],
     '截止日': rec.fields['截止日'],
-    '可用成本': rec.fields['可用成本']
+    '可用成本': rec.fields['可用成本'],
+    '權重': rec.fields['權重']
   } : null;
   var name = document.getElementById('ew-name').value.trim();
   if (!name) { alert('請填寫工作項目名稱'); return; }
   var costRaw = document.getElementById('ew-cost').value.replace(/[^\d]/g, '');
   var endVal = document.getElementById('ew-end').value;
+  var weightPct = parseWeightPctInput(document.getElementById('ew-weight').value);
+  var proj = rec ? getProjectForWorkItem(rec) : null;
+  if (proj) {
+    var others = getProjectWiWeightAllocated(proj.record_id, editingWiId);
+    if (others + weightPct > 100) {
+      alert('此標案工作項目權重合計不可超過 100%（其他項目已占 ' + others + '%）');
+      return;
+    }
+  }
   var fields = {
     '工作項目名稱': name,
     '負責夥伴': document.getElementById('ew-assignee').value
@@ -8547,6 +8755,7 @@ function saveEditWorkItem() {
   if (execVal) fields['執行夥伴'] = execVal;
   if (endVal) fields['截止日'] = dateInputToTs(endVal);
   if (costRaw) fields['可用成本'] = parseInt(costRaw, 10);
+  fields['權重'] = parseWeight(String(weightPct));
   showConfirm({
     type: 'edit',
     title: '確認修改工作項目',
@@ -8896,6 +9105,18 @@ function saveWorkItems() {
   });
   if (!items.length) { alert('請至少新增一個工作項目'); return; }
 
+  var projRec = projectsData.find(function(p) { return p.record_id === projId; });
+  var existingWeight = projRec ? getProjectWiWeightAllocated(projId, null) : 0;
+  var newWeightSum = 0;
+  rows.forEach(function(row) {
+    var wInput = row.querySelector('.wi-weight');
+    if (wInput) newWeightSum += parseWeightPctInput(wInput.value);
+  });
+  if (existingWeight + newWeightSum > 100) {
+    alert('此標案工作項目權重合計不可超過 100%（現有 ' + existingWeight + '%，本次新增 ' + newWeightSum + '%）');
+    return;
+  }
+
   var wiFieldsList = items.map(function(item) {
     return buildWiFieldsForImport(item, item.partner);
   });
@@ -9088,6 +9309,7 @@ function bootApp() {
   if (isLikelyLarkClient()) {
     ensureH5Sdk().catch(function() {});
   }
+  initTaskGroupMode();
   runAuthGate();
 }
 if (document.readyState === 'loading') {
