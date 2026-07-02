@@ -28,6 +28,8 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .tbar-tab:hover{background:var(--sf2);color:var(--text)}
 .tbar-tab.active{background:var(--accent);color:#fff}
 .topbar-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
+#boot-status{display:none;position:fixed;top:var(--th);left:0;right:0;z-index:300;background:#fff3e0;color:#92400e;padding:6px 12px;font-size:11px;text-align:center;border-bottom:1px solid #fcd34d}
+#boot-status.syncing{background:#eef4fc;color:#1a4a7a;border-bottom-color:#b8cfe8}
 
 /* body */
 #body{position:fixed;top:var(--th);left:0;right:0;bottom:0;display:flex;gap:8px;padding:8px}
@@ -735,7 +737,7 @@ button.btn-loading::after{content:'…';margin-left:2px}
   </div>
 </div>
 
-<div id="boot-status" style="display:none;position:fixed;top:var(--th);left:0;right:0;z-index:300;background:#fff3e0;color:#92400e;padding:8px 12px;font-size:11px;text-align:center;border-bottom:1px solid #fcd34d"></div>
+<div id="boot-status"></div>
 <div id="topbar">
   <div class="logo">璽墨</div>
   <nav class="topnav">
@@ -2610,7 +2612,7 @@ function saveProjectImport() {
   apiProjectImport(fields, wiFieldsList).then(function(res) {
     cl('pp-proj');
     resetProcForm();
-    loadData();
+    syncTables(['projects', 'workitems']);
     var msg = '標案與工作項目已新增！';
     if (res.partialErrors && res.partialErrors.length) {
       msg += '\n\n後台同步警告：\n' + res.partialErrors.join('\n');
@@ -3109,8 +3111,22 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v78';
+var APP_BUILD = '20260615v79';
 var DATA_CACHE_KEY = 'ximo-bootstrap-cache-v1';
+var BOOTSTRAP_TABLE_KEYS = ['projects', 'workitems', 'tasks', 'expenses', 'designs', 'journal', 'members'];
+var SYNC_EXPAND = {
+  projects: ['projects'],
+  workitems: ['workitems'],
+  tasks: ['tasks', 'workitems'],
+  expenses: ['expenses'],
+  designs: ['designs', 'workitems'],
+  journal: ['journal'],
+  members: ['members'],
+  all: BOOTSTRAP_TABLE_KEYS
+};
+var syncInflight = null;
+var syncQueuedKeys = null;
+var syncStatusCount = 0;
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
 
@@ -3127,12 +3143,140 @@ function setBootStatus(msg, isErr) {
   if (!msg) {
     el.style.display = 'none';
     el.textContent = '';
+    el.classList.remove('syncing');
     return;
   }
   el.style.display = 'block';
-  el.style.background = isErr ? '#fde8e8' : '#fff3e0';
-  el.style.color = isErr ? '#b42318' : '#92400e';
+  el.classList.toggle('syncing', !isErr && msg.indexOf('同步') >= 0);
+  el.style.background = isErr ? '#fde8e8' : (el.classList.contains('syncing') ? '' : '#fff3e0');
+  el.style.color = isErr ? '#b42318' : (el.classList.contains('syncing') ? '' : '#92400e');
   el.textContent = msg;
+}
+
+function setSyncStatus(on) {
+  syncStatusCount += on ? 1 : -1;
+  if (syncStatusCount < 0) syncStatusCount = 0;
+  if (syncStatusCount > 0) setBootStatus('同步資料中…', false);
+  else setBootStatus('');
+}
+
+function expandSyncKeys(input) {
+  var keys = [];
+  (input || []).forEach(function(k) {
+    var list = SYNC_EXPAND[k] || (BOOTSTRAP_TABLE_KEYS.indexOf(k) >= 0 ? [k] : []);
+    list.forEach(function(t) {
+      if (keys.indexOf(t) < 0) keys.push(t);
+    });
+  });
+  return keys;
+}
+
+function applyPartialTable(key, part) {
+  var records = (part && part.records) || [];
+  switch (key) {
+    case 'projects': projectsData = records; break;
+    case 'workitems': workitemsData = records; break;
+    case 'tasks': tasksData = records; break;
+    case 'expenses': expensesData = records; break;
+    case 'designs': designsData = records; break;
+    case 'journal': journalData = records; break;
+    case 'members': membersData = records; break;
+  }
+}
+
+function buildBootstrapPayloadFromState() {
+  return {
+    ok: true,
+    ts: Date.now(),
+    projects: { records: projectsData },
+    workitems: { records: workitemsData },
+    tasks: { records: tasksData },
+    expenses: { records: expensesData },
+    designs: { records: designsData },
+    journal: { records: journalData },
+    members: { records: membersData }
+  };
+}
+
+function refreshViewsForTables(keys) {
+  var s = {};
+  keys.forEach(function(k) { s[k] = true; });
+  if (s.projects || s.workitems) renderProjects();
+  if (s.tasks || s.workitems || s.projects || s.designs) {
+    renderTasks();
+    renderTeamPanel();
+  }
+  if (s.tasks || s.workitems || s.projects || s.designs) renderGanttFromData();
+  if (s.expenses || s.workitems || s.projects) {
+    renderBudget();
+    renderExpenses();
+  }
+  if (s.designs) renderDesigns();
+  if (s.journal) renderJournalPage();
+  if (s.members || s.tasks || s.workitems || s.projects) {
+    buildMembersMap();
+    fillMemberSelects();
+  }
+}
+
+function fetchSyncPayloadRemote(tableKeys) {
+  var qs = '?action=sync&tables=' + encodeURIComponent(tableKeys.join(','));
+  return fetchJsonWithTimeout(qs, 30000).catch(function(err) {
+    console.warn('sync API 失敗，改用分批載入', err);
+    return Promise.all(tableKeys.map(function(key) {
+      return fetchJsonWithTimeout('?table=' + key, 20000).then(function(res) {
+        var out = {};
+        out[key] = res;
+        return out;
+      });
+    })).then(function(parts) {
+      var payload = { ok: true, ts: Date.now() };
+      parts.forEach(function(part) {
+        Object.keys(part).forEach(function(k) { payload[k] = part[k]; });
+      });
+      return payload;
+    });
+  });
+}
+
+function runSyncTables(tableKeys) {
+  var keys = expandSyncKeys(tableKeys);
+  if (!keys.length) return Promise.resolve();
+  setSyncStatus(true);
+  return fetchSyncPayloadRemote(keys).then(function(payload) {
+    keys.forEach(function(key) {
+      applyPartialTable(key, payload[key]);
+    });
+    pruneSelectedProjects();
+    writeBootstrapCache(buildBootstrapPayloadFromState());
+    refreshViewsForTables(keys);
+  }).catch(function(err) {
+    console.warn('增量同步失敗，改為完整重載', err);
+    return loadData({ silent: true, skipCache: true });
+  }).finally(function() {
+    setSyncStatus(false);
+  });
+}
+
+function syncTables(tableKeys) {
+  var keys = expandSyncKeys(tableKeys);
+  if (!keys.length) return Promise.resolve();
+  if (syncInflight) {
+    syncQueuedKeys = syncQueuedKeys || [];
+    keys.forEach(function(k) {
+      if (syncQueuedKeys.indexOf(k) < 0) syncQueuedKeys.push(k);
+    });
+    return syncInflight;
+  }
+  syncInflight = runSyncTables(keys).finally(function() {
+    syncInflight = null;
+    if (syncQueuedKeys && syncQueuedKeys.length) {
+      var next = syncQueuedKeys.slice();
+      syncQueuedKeys = null;
+      return syncTables(next);
+    }
+  });
+  return syncInflight;
 }
 
 // ── 復原堆疊 ──
@@ -3163,11 +3307,11 @@ function undoLast() {
   hideUndoToast();
   if (last.type === 'delete') {
     apiPost(last.table, last.data).then(function() {
-      loadData();
+      syncTables([last.table]);
     }).catch(function(err) { alert('復原失敗：' + err.message); });
   } else if (last.type === 'update') {
     apiPut(last.table, last.recordId, last.data).then(function() {
-      loadData();
+      syncTables([last.table]);
     }).catch(function(err) { alert('復原失敗：' + err.message); });
   }
 }
@@ -4837,7 +4981,7 @@ function fetchBootstrapPayloadRemote() {
 }
 
 function loadExtraData() {
-  loadData({ silent: true, skipCache: true });
+  syncTables(['designs']);
 }
 
 function loadData(opts) {
@@ -8398,7 +8542,7 @@ function onGanttProjStatusChange(projId, sel) {
   apiPut('projects', projId, { '狀態': status }).then(function() {
     if (rec) rec.fields['狀態'] = status;
     sel.dataset.prev = status;
-    loadData();
+    syncTables(['projects']);
     showUndoToast('標案狀態已更新為「' + status + '」');
   }).catch(function(err) { alert('狀態更新失敗：' + err.message); sel.value = prev; });
 }
@@ -8476,7 +8620,7 @@ function confirmArchiveProject() {
         }
         cancelArchiveProject();
         if (oldFields && res.statusUpdated) undoStack.push({ type: 'update', table: 'projects', recordId: savedProjId, data: oldFields });
-        loadData();
+        syncTables(['projects']);
         showUndoToast(res.statusUpdated ? '標案已封存至知識庫' : '資料已寫入知識庫');
         var openUrl = res.wikiUrl || url;
         var confirmMsg = res.statusUpdated
@@ -8607,9 +8751,7 @@ function saveEditDesign() {
       if (oldFields) undoStack.push({ type: 'update', table: 'designs', recordId: editingDesignId, data: oldFields });
       apiPut('designs', editingDesignId, fields).then(function() {
         cl('pp-edit-des');
-        loadExtraData();
-        renderDesigns();
-        renderGanttFromData();
+        syncTables(['designs']);
         showUndoToast('設計任務單已修改');
       }).catch(function(err) { alert('修改失敗：' + err.message); });
     }
@@ -8687,7 +8829,7 @@ function saveEditExpense() {
       if (oldFields) undoStack.push({ type: 'update', table: 'expenses', recordId: editingExpenseId, data: oldFields });
       apiPut('expenses', editingExpenseId, fields).then(function() {
         cl('pp-edit-exp');
-        loadData();
+        syncTables(['expenses']);
         showUndoToast('支出明細已修改');
       }).catch(function(err) { alert('修改失敗：' + err.message); });
     }
@@ -8755,7 +8897,7 @@ function saveEditTask() {
       if (oldFields) undoStack.push({ type: 'update', table: 'tasks', recordId: editingTaskId, data: oldFields });
       apiPut('tasks', editingTaskId, fields).then(function() {
         cl('pp-edit-task');
-        loadData();
+        syncTables(['tasks']);
         showUndoToast('任務已修改');
       }).catch(function(err) { alert('修改失敗：' + err.message); });
     }
@@ -8842,7 +8984,7 @@ function saveEditWorkItem() {
       if (oldFields) undoStack.push({ type: 'update', table: 'workitems', recordId: editingWiId, data: oldFields });
       apiPut('workitems', editingWiId, fields).then(function() {
         cl('pp-edit-wi');
-        loadData();
+        syncTables(['workitems']);
         showUndoToast('工作項目已修改');
       }).catch(function(err) { alert('修改失敗：' + err.message); });
     }
@@ -8905,7 +9047,7 @@ function saveEditProject() {
       if (oldFields) undoStack.push({ type: 'update', table: 'projects', recordId: editingProjId, data: oldFields });
       apiPut('projects', editingProjId, fields).then(function() {
         cl('pp-edit-proj');
-        loadData();
+        syncTables(['projects']);
         showUndoToast('標案已修改');
       }).catch(function(err) { alert('修改失敗：' + err.message); });
     }
@@ -8943,7 +9085,7 @@ function deleteProject(id, name) {
       var savedData = rec ? Object.assign({}, rec.fields) : null;
       apiDelete('projects', id).then(function() {
         if (savedData) undoStack.push({ type: 'delete', table: 'projects', data: savedData });
-        loadData();
+        syncTables(['all']);
         showUndoToast('標案「' + name + '」已刪除（5 秒內可復原）');
       }).catch(function(err) { alert('刪除失敗：' + err.message); });
     }
@@ -8961,7 +9103,7 @@ function deleteWorkItem(id, name) {
       var savedData = rec ? Object.assign({}, rec.fields) : null;
       apiDelete('workitems', id).then(function() {
         if (savedData) undoStack.push({ type: 'delete', table: 'workitems', data: savedData });
-        loadData();
+        syncTables(['workitems', 'tasks']);
         showUndoToast('工作項目「' + name + '」已刪除（5 秒內可復原）');
       }).catch(function(err) { alert('刪除失敗：' + err.message); });
     }
@@ -8979,7 +9121,7 @@ function deleteTask(id, name) {
       var savedData = rec ? Object.assign({}, rec.fields) : null;
       apiDelete('tasks', id).then(function() {
         if (savedData) undoStack.push({ type: 'delete', table: 'tasks', data: savedData });
-        loadData();
+        syncTables(['tasks']);
         showUndoToast('任務「' + name + '」已刪除（5 秒內可復原）');
       }).catch(function(err) { alert('刪除失敗：' + err.message); });
     }
@@ -8999,7 +9141,7 @@ function deleteExpense(id, name) {
         if (savedData) undoStack.push({ type: 'delete', table: 'expenses', data: savedData });
         cl('pp-edit-exp');
         editingExpenseId = null;
-        loadData();
+        syncTables(['expenses']);
         showUndoToast('支出「' + name + '」已刪除（5 秒內可復原）');
       }).catch(function(err) { alert('刪除失敗：' + err.message); });
     }
@@ -9026,7 +9168,7 @@ function deleteDesign(id, name) {
         if (savedData) undoStack.push({ type: 'delete', table: 'designs', data: savedData });
         cl('pp-edit-des');
         editingDesignId = null;
-        loadExtraData();
+        syncTables(['designs']);
         showUndoToast('設計任務「' + name + '」已刪除（5 秒內可復原）');
       }).catch(function(err) { alert('刪除失敗：' + err.message); });
     }
@@ -9202,7 +9344,7 @@ function saveWorkItems() {
   apiWorkItemsImport(projId, wiFieldsList).then(function(res) {
     cl('pp-work');
     document.getElementById('sl').innerHTML = '';
-    loadData();
+    syncTables(['workitems']);
     var msg = '工作項目已新增！';
     if (res.partialErrors && res.partialErrors.length) {
       msg += '\n\n後台同步警告：\n' + res.partialErrors.join('\n');
@@ -9245,7 +9387,7 @@ function saveTask() {
   apiPost('tasks', fields).then(function() {
     cl('pp-task');
     document.getElementById('nt-name').value = '';
-    loadData();
+    syncTables(['tasks']);
     alert('任務已新增！');
   }).catch(function(err) {
     alert('新增失敗：' + err.message);
@@ -9280,7 +9422,7 @@ function saveExpense() {
     document.getElementById('ex-name').value = '';
     document.getElementById('aa').value = '';
     document.getElementById('ua').value = '';
-    loadData();
+    syncTables(['expenses']);
     alert('支出明細已新增！');
   }).catch(function(err) {
     alert('新增失敗：' + err.message);
@@ -9321,8 +9463,7 @@ function saveDesign() {
   apiPost('designs', fields).then(function() {
     cl('pp-des');
     document.getElementById('ds-name').value = '';
-    loadExtraData();
-    renderDesigns();
+    syncTables(['designs']);
     alert('設計任務單已新增！');
   }).catch(function(err) {
     alert('新增失敗：' + err.message);

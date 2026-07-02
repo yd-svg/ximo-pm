@@ -66,8 +66,14 @@ function getRedirectUriForRequest(req) {
   return canonical;
 }
  
-// 取得 tenant_access_token
+// 取得 tenant_access_token（模組內快取，避免同次請求重複換 token）
+let _tenantTokenCache = null;
+
 async function getToken() {
+  const now = Date.now();
+  if (_tenantTokenCache && _tenantTokenCache.expiresAt > now + 60000) {
+    return _tenantTokenCache.token;
+  }
   if (!APP_ID || !APP_SECRET) {
     throw new Error('缺少 LARK_APP_ID 或 LARK_APP_SECRET');
   }
@@ -80,7 +86,11 @@ async function getToken() {
   if (data.code !== 0) {
     throw new Error('Token error: ' + data.msg + ' (code ' + data.code + ')');
   }
-  return data.tenant_access_token;
+  _tenantTokenCache = {
+    token: data.tenant_access_token,
+    expiresAt: now + Math.max(60, (data.expire || 7200)) * 1000
+  };
+  return _tenantTokenCache.token;
 }
 
 // 各資料表所屬的 app_token：有 LARK_APP_TOKEN_BACKEND 時，讀寫皆以後台 Base 為準（與 Lark 手動編輯同源）
@@ -2950,6 +2960,21 @@ export default async function handler(req, res) {
 
     if (action === 'bootstrap' && req.method === 'GET') {
       const payload = await fetchBootstrapPayload();
+      return res.status(200).json(payload);
+    }
+
+    if (action === 'sync' && req.method === 'GET') {
+      const raw = String(req.query.tables || '').trim();
+      const keys = raw
+        ? raw.split(',').map(function(s) { return s.trim(); }).filter(function(k) { return BOOTSTRAP_TABLE_KEYS.indexOf(k) >= 0; })
+        : BOOTSTRAP_TABLE_KEYS.slice();
+      const uniq = keys.filter(function(k, i) { return keys.indexOf(k) === i; });
+      const token = await getToken();
+      const parts = await Promise.all(uniq.map(function(key) {
+        return fetchTableRecordsSafe(token, key);
+      }));
+      const payload = { ok: true, ts: Date.now() };
+      uniq.forEach(function(key, i) { payload[key] = parts[i]; });
       return res.status(200).json(payload);
     }
 
