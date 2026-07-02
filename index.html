@@ -115,10 +115,23 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .ft{display:flex;gap:3px;overflow-x:auto;padding:0 8px 6px;flex-shrink:0;scrollbar-width:thin}
 .ft::-webkit-scrollbar{height:3px}
 .tl2{flex:1;overflow-y:auto;padding:2px 8px 8px;min-height:0}
-.tgl{padding:6px 2px 5px;font-size:11px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.tgl{padding:6px 8px;font-size:11px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:5px;margin-bottom:2px;cursor:pointer;user-select:none;border-radius:8px}
+.tgl:hover{background:var(--sf2)}
+.tgl-person{background:var(--sf2);margin-bottom:4px;padding:7px 8px}
+.tgl-wi{padding:5px 6px 5px 4px;margin-bottom:1px}
+.tgl-arrow{font-size:9px;color:var(--t3);transition:transform .2s;flex-shrink:0;width:10px;text-align:center;line-height:1}
+.tgl.open .tgl-arrow{transform:rotate(90deg)}
+.tgl-body{display:none;padding:0 0 4px 14px;margin-bottom:2px}
+.tgl.open+.tgl-body{display:block}
+.tgl-body-person{padding-left:8px}
+.tgl-body-person>.tgl-wi{margin-left:2px}
+.tgl>span:not(.tc):not(.tgl-arrow):not(.tgd):not(.av){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tgd{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.tc{background:var(--sf2);border-radius:8px;padding:1px 5px;font-size:9px;color:var(--t3);font-weight:600}
+.tc{background:var(--sf2);border-radius:8px;padding:1px 5px;font-size:9px;color:var(--t3);font-weight:600;margin-left:auto;flex-shrink:0}
 .ti{padding:7px 9px;border-radius:var(--rs);cursor:pointer;margin-bottom:5px;background:var(--sf2);border:1px solid var(--border);transition:border-color .1s,background .1s;position:relative}
+.ti-compact{padding:6px 9px}
+.ti-compact .tit{align-items:center}
+.ti-compact .tn{font-size:12px}
 .ti:hover{border-color:var(--t3);background:#fff}
 .ti .bdel{position:absolute;right:6px;top:6px;background:var(--sf2);color:var(--t3);opacity:0}
 .ti:hover .bdel{opacity:1}
@@ -133,9 +146,10 @@ body{font-family:-apple-system,'PingFang TC',sans-serif;background:var(--bg);col
 .tpb{height:2px;background:var(--border);border-radius:1px;margin-top:5px;overflow:hidden}
 .tpf{height:100%;border-radius:1px}
 .ftag{padding:2px 7px;border-radius:20px;font-size:10px;cursor:pointer;border:1px solid var(--border);white-space:nowrap;color:var(--t2);background:var(--sf2);transition:all .15s;flex-shrink:0}
-.task-group-toggle{display:flex;gap:2px;padding:2px;margin:0 8px 6px;border:1px solid var(--border);border-radius:20px;background:var(--sf2);flex-shrink:0}
-.task-group-btn{flex:1;padding:4px 6px;border:none;border-radius:18px;background:transparent;font-size:10px;font-weight:600;color:var(--t2);cursor:pointer;line-height:1.2;transition:background .15s,color .15s;white-space:nowrap}
-.task-group-btn.active{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.task-group-mode{display:flex;gap:4px;padding:0 8px 6px;flex-shrink:0}
+.tgm-btn{flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:18px;background:var(--sf2);font-size:10px;font-weight:600;color:var(--t2);cursor:pointer;line-height:1.2;transition:background .15s,color .15s,border-color .15s;white-space:nowrap;font-family:inherit}
+.tgm-btn:hover{background:#eeebe6;color:var(--text)}
+.tgm-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .todo-assignee-group{margin-bottom:4px}
 .todo-assignee-hdr{display:flex;align-items:center;gap:5px;padding:6px 8px;border-radius:8px;background:var(--sf2);cursor:pointer;user-select:none;font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px}
 .todo-assignee-hdr:hover{background:#eeebe6}
@@ -758,10 +772,9 @@ button.btn-loading::after{content:'…';margin-left:2px}
   <div class="lp-card lp-task-card">
     <div class="bs">
       <div class="bh"><span class="sl">任務清單</span><button class="badd" onclick="openPopup('pp-task')">＋ 新增</button></div>
-      <div class="task-group-toggle" id="task-group-toggle">
-        <button type="button" class="task-group-btn active" data-mode="due" onclick="setTaskGroupMode('due')">依到期日</button>
-        <button type="button" class="task-group-btn" data-mode="assignee" onclick="setTaskGroupMode('assignee')">依負責人</button>
-        <button type="button" class="task-group-btn" data-mode="project" onclick="setTaskGroupMode('project')">依標案</button>
+      <div class="task-group-mode" id="task-group-mode">
+        <button type="button" class="tgm-btn active" data-mode="due" onclick="setTaskGroupMode('due', this)">依到期日</button>
+        <button type="button" class="tgm-btn" data-mode="assignee" onclick="setTaskGroupMode('assignee', this)">依負責人</button>
       </div>
       <div class="ft" id="task-filters"></div>
       <div class="tl2" id="task-list-body">
@@ -3096,7 +3109,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v77';
+var APP_BUILD = '20260615v78';
 var DATA_CACHE_KEY = 'ximo-bootstrap-cache-v1';
 var ARCHIVE_OAUTH_SCOPES = ['wiki:wiki', 'wiki:node:read', 'bitable:app'];
 var API = '/api/lark';
@@ -5210,56 +5223,34 @@ var currentTaskFilterProj = '';
 function initTaskGroupMode() {
   try {
     var saved = localStorage.getItem(TASK_GROUP_STORAGE_KEY);
-    if (saved === 'assignee' || saved === 'project' || saved === 'due') taskGroupMode = saved;
+    if (saved === 'assignee') taskGroupMode = 'assignee';
+    else taskGroupMode = 'due';
   } catch (e) {}
-  document.querySelectorAll('.task-group-btn').forEach(function(btn) {
+  document.querySelectorAll('.tgm-btn').forEach(function(btn) {
     btn.classList.toggle('active', btn.dataset.mode === taskGroupMode);
   });
 }
 
-function setTaskGroupMode(mode) {
-  taskGroupMode = (mode === 'assignee' || mode === 'project') ? mode : 'due';
+function setTaskGroupMode(mode, btn) {
+  taskGroupMode = mode === 'assignee' ? 'assignee' : 'due';
   try { localStorage.setItem(TASK_GROUP_STORAGE_KEY, taskGroupMode); } catch (e) {}
-  document.querySelectorAll('.task-group-btn').forEach(function(btn) {
-    btn.classList.toggle('active', btn.dataset.mode === taskGroupMode);
-  });
+  document.querySelectorAll('.tgm-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  else {
+    document.querySelectorAll('.tgm-btn').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.mode === taskGroupMode);
+    });
+  }
   renderTasks();
 }
 
-function renderTaskItemHtml(task) {
-  var html = '';
-  html += '<div class="ti" data-proj="' + escAttr(task.projName) + '" onclick="openTaskDetail(\'' + task.id + '\')">';
-  html += '<button type="button" class="bdel" title="修改任務" style="margin-right:2px;right:28px" onclick="event.stopPropagation();openEditTask(\'' + task.id + '\')">✎</button>';
-  html += '<button type="button" class="bdel" title="刪除任務" onclick="event.stopPropagation();deleteTask(\'' + task.id + '\',\'' + escAttr(task.name).replace(/'/g, "\\'") + '\')">×</button>';
-  html += '<div class="tit"><div><div class="tn">' + escHtml(task.name) + '</div>';
-  html += '<div class="tm">' + escHtml(task.wiName) + ' · ' + escHtml(task.assignee) + '</div></div>';
-  var remainDone = task.progress >= 100 || task.status === '已完成';
-  var remainCls = remainDone ? ' tds-done' : '';
-  html += '<div class="tr2"><div class="td2">' + escHtml(task.dueFull) + '</div><div class="tds' + remainCls + '">' + escHtml(task.remain) + '</div></div></div>';
-  html += '</div>';
-  return html;
+function toggleTaskGroup(hdr, e) {
+  if (e) e.stopPropagation();
+  if (!hdr) return;
+  hdr.classList.toggle('open');
 }
 
-function applyTaskListFilter(proj) {
-  currentTaskFilterProj = proj || '';
-  document.querySelectorAll('#task-list-body .ti').forEach(function(item) {
-    var match = !proj || item.dataset.proj === proj;
-    item.style.display = match ? '' : 'none';
-  });
-  if (taskGroupMode !== 'due') {
-    document.querySelectorAll('#task-list-body .tgl').forEach(function(g) {
-      var next = g.nextElementSibling;
-      var hasVisible = false;
-      while (next && !next.classList.contains('tgl')) {
-        if (next.classList.contains('ti') && next.style.display !== 'none') hasVisible = true;
-        next = next.nextElementSibling;
-      }
-      g.style.display = hasVisible ? '' : 'none';
-    });
-  }
-}
-
-function renderTasks() {
+function getFilteredTaskItems() {
   var wiMap = {};
   workitemsData.forEach(function(wi) {
     wiMap[wi.record_id] = {
@@ -5268,7 +5259,7 @@ function renderTasks() {
     };
   });
 
-  var allTasks = [];
+  var items = [];
   tasksData.forEach(function(rec) {
     var f = rec.fields;
     var wiIds = getLinkIds(f['所屬工作項目']);
@@ -5279,11 +5270,11 @@ function renderTasks() {
     if (projRec && !isProjectVisible(projRec)) return;
     if (projRec && !isProjectSelected(projRec)) return;
     var progress = parseProgressVal(f['進度狀態'], f['進度數值']);
-    allTasks.push({
+    items.push({
       id: rec.record_id,
       name: f['任務名稱'] || '未命名',
       assignee: personName(f['負責人']) || '未指定',
-      wiName: wi ? wi.name : '',
+      wiName: wi ? wi.name : '未分類',
       dueTs: f['預計完成日'],
       dueFull: f['預計完成日'] ? fmtDate(f['預計完成日']) : '—',
       remain: taskRemainLabel(f['預計完成日'], progress, f['進度狀態']),
@@ -5293,67 +5284,153 @@ function renderTasks() {
       projName: projName
     });
   });
+  return items;
+}
 
-  allTasks.sort(function(a, b) {
-    var ad = a.dueTs || 9999999999999;
-    var bd = b.dueTs || 9999999999999;
-    return ad - bd;
+function groupTasksByWorkitem(tasks) {
+  var groups = {};
+  tasks.forEach(function(t) {
+    var key = t.wiId || '__none__';
+    if (!groups[key]) {
+      groups[key] = {
+        wiId: t.wiId,
+        wiName: t.wiName || '未分類',
+        projName: t.projName,
+        tasks: []
+      };
+    }
+    groups[key].tasks.push(t);
   });
+  Object.keys(groups).forEach(function(key) {
+    groups[key].tasks.sort(function(a, b) { return (a.dueTs || 0) - (b.dueTs || 0); });
+    groups[key].earliestDue = groups[key].tasks[0] ? (groups[key].tasks[0].dueTs || Infinity) : Infinity;
+  });
+  return groups;
+}
 
+function renderTaskRow(t, opts) {
+  opts = opts || {};
+  var compact = !!opts.hideAssignee;
   var html = '';
-  var projColors = {};
-  projectsData.forEach(function(rec, i) {
-    projColors[rec.fields['標案名稱'] || ''] = PROJECT_COLORS[i % PROJECT_COLORS.length];
+  html += '<div class="ti' + (compact ? ' ti-compact' : '') + '" data-proj="' + escAttr(t.projName) + '" onclick="openTaskDetail(\'' + t.id + '\')">';
+  html += '<button type="button" class="bdel" title="修改任務" style="margin-right:2px;right:28px" onclick="event.stopPropagation();openEditTask(\'' + t.id + '\')">✎</button>';
+  html += '<button type="button" class="bdel" title="刪除任務" onclick="event.stopPropagation();deleteTask(\'' + t.id + '\',\'' + escAttr(t.name).replace(/'/g, "\\'") + '\')">×</button>';
+  html += '<div class="tit"><div><div class="tn">' + escHtml(t.name) + '</div>';
+  if (!opts.hideAssignee) {
+    html += '<div class="tm">' + escHtml(t.assignee) + '</div>';
+  }
+  html += '</div>';
+  var remainDone = t.progress >= 100 || t.status === '已完成';
+  var remainCls = remainDone ? ' tds-done' : '';
+  html += '<div class="tr2"><div class="td2">' + escHtml(t.dueFull) + '</div><div class="tds' + remainCls + '">' + escHtml(t.remain) + '</div></div></div>';
+  html += '</div>';
+  return html;
+}
+
+function renderWorkitemGroup(group, opts) {
+  opts = opts || {};
+  var wiKey = group.wiId || '__none__';
+  var html = '<div class="tgl tgl-wi" data-proj="' + escAttr(group.projName) + '" data-wi="' + escAttr(wiKey) + '" onclick="toggleTaskGroup(this, event)">';
+  html += '<span class="tgl-arrow">▶</span>';
+  html += '<span class="tgd" style="background:' + projColorByName(group.projName) + '"></span>';
+  html += '<span title="' + escAttr(group.wiName) + '">' + escHtml(group.wiName) + '</span>';
+  html += '<span class="tc">' + group.tasks.length + '</span></div>';
+  html += '<div class="tgl-body">';
+  group.tasks.forEach(function(t) {
+    html += renderTaskRow(t, { hideAssignee: !!opts.hideAssignee });
   });
+  html += '</div>';
+  return html;
+}
 
-  if (taskGroupMode === 'due' || taskGroupMode === 'project') {
-    var grouped = {};
-    allTasks.forEach(function(task) {
-      if (!grouped[task.projName]) grouped[task.projName] = [];
-      grouped[task.projName].push(task);
-    });
-
-    projectsData.forEach(function(rec) {
-      var pname = rec.fields['標案名稱'] || '';
-      if (!isProjectVisible(rec)) return;
-      if (!isProjectSelected(rec)) return;
-      if (!grouped[pname] || !grouped[pname].length) return;
-      var color = projColors[pname] || '#888';
-      html += '<div class="tgl" data-proj="' + escAttr(pname) + '"><div class="tgd" style="background:' + color + '"></div><span title="' + escAttr(pname) + '">' + escHtml(shortProjLabel(pname)) + '</span><span class="tc">' + grouped[pname].length + '</span></div>';
-      grouped[pname].forEach(function(task) {
-        html += renderTaskItemHtml(task);
+function refreshTaskGroupVisibility() {
+  document.querySelectorAll('#task-list-body .tgl-wi').forEach(function(hdr) {
+    var body = hdr.nextElementSibling;
+    var visible = false;
+    if (body) {
+      body.querySelectorAll('.ti').forEach(function(ti) {
+        if (ti.style.display !== 'none') visible = true;
       });
-      delete grouped[pname];
-    });
-
-    Object.keys(grouped).forEach(function(pname) {
-      if (!grouped[pname].length) return;
-      var projRec = projectsData.find(function(p) { return (p.fields['標案名稱'] || '') === pname; });
-      if (projRec && !isProjectSelected(projRec)) return;
-      if (projRec && !isProjectVisible(projRec)) return;
-      html += '<div class="tgl" data-proj="' + escAttr(pname) + '"><div class="tgd" style="background:#888"></div><span title="' + escAttr(pname) + '">' + escHtml(shortProjLabel(pname)) + '</span><span class="tc">' + grouped[pname].length + '</span></div>';
-      grouped[pname].forEach(function(task) {
-        html += renderTaskItemHtml(task);
+    }
+    hdr.style.display = visible ? '' : 'none';
+    if (body) body.style.display = visible ? '' : 'none';
+  });
+  document.querySelectorAll('#task-list-body .tgl-person').forEach(function(hdr) {
+    var body = hdr.nextElementSibling;
+    var visible = false;
+    if (body) {
+      body.querySelectorAll('.tgl-wi').forEach(function(wi) {
+        if (wi.style.display !== 'none') visible = true;
       });
-    });
-  } else if (taskGroupMode === 'assignee') {
+    }
+    hdr.style.display = visible ? '' : 'none';
+    if (body) body.style.display = visible ? '' : 'none';
+  });
+}
+
+function restoreFilterTagState() {
+  document.querySelectorAll('#task-filters .ftag').forEach(function(t) {
+    var active = (t.dataset.proj || '') === currentTaskFilterProj;
+    if (active) {
+      t.style.background = t.dataset.proj ? (t.style.borderColor || 'var(--accent)') : 'var(--accent)';
+      t.style.color = '#fff';
+    } else {
+      t.style.background = '';
+      t.style.color = t.dataset.proj ? (t.style.borderColor || '') : '';
+    }
+  });
+}
+
+function applyTaskListFilter(proj) {
+  currentTaskFilterProj = proj || '';
+  document.querySelectorAll('#task-list-body .ti').forEach(function(item) {
+    var match = !proj || item.dataset.proj === proj;
+    item.style.display = match ? '' : 'none';
+  });
+  refreshTaskGroupVisibility();
+  restoreFilterTagState();
+}
+
+function renderTasks() {
+  var filteredTasks = getFilteredTaskItems();
+  var html = '';
+
+  if (taskGroupMode === 'assignee') {
     var byAssignee = {};
-    allTasks.forEach(function(task) {
-      var key = task.assignee || '未指定';
+    filteredTasks.forEach(function(t) {
+      var key = t.assignee || '未指定';
       if (!byAssignee[key]) byAssignee[key] = [];
-      byAssignee[key].push(task);
+      byAssignee[key].push(t);
     });
     Object.keys(byAssignee).sort(function(a, b) {
       return a.localeCompare(b, 'zh-Hant');
     }).forEach(function(name) {
-      html += '<div class="tgl" data-group="' + escAttr(name) + '"><span title="' + escAttr(name) + '">' + escHtml(name) + '</span><span class="tc">' + byAssignee[name].length + '</span></div>';
-      byAssignee[name].forEach(function(task) {
-        html += renderTaskItemHtml(task);
-      });
+      var wiGroups = groupTasksByWorkitem(byAssignee[name]);
+      var sortedWi = Object.keys(wiGroups).map(function(k) { return wiGroups[k]; })
+        .sort(function(a, b) { return a.earliestDue - b.earliestDue; });
+      html += '<div class="tgl tgl-person" onclick="toggleTaskGroup(this, event)">';
+      html += '<span class="tgl-arrow">▶</span>';
+      html += '<span class="av ' + avatarClass(name) + '">' + personInitial(name) + '</span>';
+      html += '<span title="' + escAttr(name) + '">' + escHtml(name) + '</span>';
+      html += '<span class="tc">' + byAssignee[name].length + '</span></div>';
+      html += '<div class="tgl-body tgl-body-person">';
+      sortedWi.forEach(function(g) { html += renderWorkitemGroup(g, { hideAssignee: true }); });
+      html += '</div>';
     });
+  } else {
+    var wiGroups = groupTasksByWorkitem(filteredTasks);
+    var sortedWi = Object.keys(wiGroups).map(function(k) { return wiGroups[k]; })
+      .sort(function(a, b) { return a.earliestDue - b.earliestDue; });
+    sortedWi.forEach(function(g) { html += renderWorkitemGroup(g, { hideAssignee: false }); });
   }
 
-  document.getElementById('task-list-body').innerHTML = html || '<div style="padding:12px;color:var(--t3);font-size:11px">尚無任務</div>';
+  document.getElementById('task-list-body').innerHTML = html
+    || '<div style="padding:12px;color:var(--t3);font-size:11px">尚無任務</div>';
+
+  var projColors = {};
+  projectsData.forEach(function(rec, i) {
+    projColors[rec.fields['標案名稱'] || ''] = PROJECT_COLORS[i % PROJECT_COLORS.length];
+  });
   updateFilterTags(projColors);
   applyTaskListFilter(currentTaskFilterProj);
   renderTeamPanel();
