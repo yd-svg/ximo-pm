@@ -962,6 +962,9 @@ button.btn-loading::after{content:'…';margin-left:2px}
 <div class="po" id="pp-td"><div class="pp"><div class="pph pph-report" id="td-header"><h3 id="td-title">任務回報</h3><div class="td-hdr-actions"><button type="button" class="td-open-report" onclick="openDailyLogFromTask()">開啟今日回報表</button><button type="button" class="ppc" onclick="cl('pp-td')">✕</button></div></div><div class="ppb">
   <div id="td-proj-tag" class="td-proj"></div>
   <div id="td-meta" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center"></div>
+  <div class="fg"><label>任務名稱</label><input type="text" id="td-name" placeholder="任務名稱" oninput="document.getElementById('td-title').textContent=this.value||'任務回報'"></div>
+  <div class="fg"><label>所屬工作項目</label><select id="td-wi"></select></div>
+  <div class="fg"><label>負責人</label><select id="td-assignee" data-members></select></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
     <div class="fg" style="margin:0"><label>開始日期</label><input type="date" id="td-start"></div>
     <div class="fg" style="margin:0"><label>預計完成日</label><input type="date" id="td-due"></div>
@@ -1037,18 +1040,6 @@ button.btn-loading::after{content:'…';margin-left:2px}
     </div>
   </div>
 </div>
-
-<!-- 修改任務 -->
-<div class="po" id="pp-edit-task"><div class="pp"><div class="pph"><h3>修改任務</h3><button class="ppc" onclick="cl('pp-edit-task')">✕</button></div><div class="ppb">
-  <div class="fg"><label>任務名稱</label><input type="text" id="et-name"></div>
-  <div class="fg"><label>負責人</label><select id="et-assignee" data-members></select></div>
-  <div class="fg"><label>所屬工作項目</label><select id="et-wi"></select></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:11px">
-    <div class="fg" style="margin:0"><label>開始日期</label><input type="date" id="et-start"></div>
-    <div class="fg" style="margin:0"><label>預計完成日</label><input type="date" id="et-due"></div>
-  </div>
-  <div class="fg"><label>進度狀態</label><select id="et-status"></select></div>
-</div><div class="ppf"><button class="bcan" onclick="cl('pp-edit-task')">取消</button><button class="bpri" onclick="saveEditTask()">儲存</button></div></div></div>
 
 <!-- 修改工作項目 -->
 <div class="po" id="pp-edit-wi"><div class="pp"><div class="pph"><h3>修改工作項目</h3><button class="ppc" onclick="cl('pp-edit-wi')">✕</button></div><div class="ppb">
@@ -3109,7 +3100,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v83';
+var APP_BUILD = '20260615v85';
 var DATA_CACHE_KEY = 'ximo-bootstrap-cache-v1';
 var BOOTSTRAP_TABLE_KEYS = ['projects', 'workitems', 'tasks', 'expenses', 'designs', 'journal', 'members'];
 var SYNC_EXPAND = {
@@ -5458,7 +5449,6 @@ function renderTaskRow(t, opts) {
   var compact = !!opts.hideAssignee;
   var html = '';
   html += '<div class="ti' + (compact ? ' ti-compact' : '') + '" data-proj="' + escAttr(t.projName) + '" onclick="openTaskDetail(\'' + t.id + '\')">';
-  html += '<button type="button" class="bdel" title="修改任務" style="margin-right:2px;right:28px" onclick="event.stopPropagation();openEditTask(\'' + t.id + '\')">✎</button>';
   html += '<button type="button" class="bdel" title="刪除任務" onclick="event.stopPropagation();deleteTask(\'' + t.id + '\',\'' + escAttr(t.name).replace(/'/g, "\\'") + '\')">×</button>';
   html += '<div class="tit"><div><div class="tn">' + escHtml(t.name) + '</div>';
   if (!opts.hideAssignee) {
@@ -6461,7 +6451,11 @@ function confirmTaskReport() {
   var note = (document.getElementById('td-note').value || '').trim();
   var blockReason = (document.getElementById('td-block-reason').value || '').trim();
   var category = taskReportCategory || 'doing';
-  var author = ctx.assignee || '';
+  var taskName = (document.getElementById('td-name').value || '').trim();
+  if (!taskName) { alert('請填寫任務名稱'); return; }
+  var assigneeSel = document.getElementById('td-assignee');
+  var assigneeName = (assigneeSel && assigneeSel.value) || ctx.assignee || '';
+  var author = assigneeName;
   var today = new Date();
   today.setHours(0, 0, 0, 0);
   var todayStart = today.getTime();
@@ -6501,7 +6495,7 @@ function confirmTaskReport() {
   }
   if (note) {
     var catLabels = { doing: '進行中', done: '今日完成', block: '卡關', tomorrow: '明日預計' };
-    var noteLine = '/ ' + ctx.projName + ' · ' + (ctx.f['任務名稱'] || '') + (note ? '：' + note : '');
+    var noteLine = '/ ' + ctx.projName + ' · ' + taskName + (note ? '：' + note : '');
     var baseNote = journalFields['備註'] || '';
     journalFields['備註'] = baseNote ? (baseNote + '\n' + noteLine) : ('【' + (catLabels[category] || '進行中') + '】\n' + noteLine);
   }
@@ -6518,9 +6512,14 @@ function confirmTaskReport() {
   else if (author && author !== '（未指定）') journalFields['回報人'] = author;
 
   var taskFields = {
+    '任務名稱': taskName,
     '進度狀態': status,
     '進度數值': parseProgressVal(status, null)
   };
+  var tdWi = document.getElementById('td-wi');
+  if (tdWi && tdWi.value) taskFields['所屬工作項目'] = [tdWi.value];
+  var assigneePerson = larkPerson(assigneeName);
+  if (assigneePerson) taskFields['負責人'] = assigneePerson;
   var tdStart = document.getElementById('td-start');
   var tdDue = document.getElementById('td-due');
   if (tdStart && tdStart.value) taskFields['開始日期'] = dateInputToTs(tdStart.value);
@@ -6539,8 +6538,11 @@ function confirmTaskReport() {
   var oldFields = {};
   if (taskFields['進度狀態'] !== undefined) oldFields['進度狀態'] = oldRec.fields['進度狀態'] || '';
   if (taskFields['進度數值'] !== undefined) oldFields['進度數值'] = oldRec.fields['進度數值'] || 0;
+  if (taskFields['任務名稱'] !== undefined) oldFields['任務名稱'] = oldRec.fields['任務名稱'] || '';
+  if (taskFields['所屬工作項目'] !== undefined) oldFields['所屬工作項目'] = oldRec.fields['所屬工作項目'];
   if (taskFields['開始日期'] !== undefined) oldFields['開始日期'] = oldRec.fields['開始日期'];
   if (taskFields['預計完成日'] !== undefined) oldFields['預計完成日'] = oldRec.fields['預計完成日'];
+  if (taskFields['負責人'] !== undefined) oldFields['負責人'] = oldRec.fields['負責人'];
   undoStack.push({ type: 'update', table: 'tasks', recordId: currentTaskId, data: oldFields });
 
   var journalPromise = existingJournal
@@ -6553,14 +6555,8 @@ function confirmTaskReport() {
   ]).then(function() {
     return reloadJournal();
   }).then(function() {
-    return fetch(API + '?table=tasks').then(function(r) { return r.json(); });
-  }).then(function(data) {
-    if (data && data.records) {
-      tasksData = data.records;
-      renderTasks();
-      renderTeamPanel();
-      renderGanttFromData();
-    }
+    return syncTables(['tasks']);
+  }).then(function() {
     cl('pp-td');
   }).catch(function(err) {
     console.error(err);
@@ -6607,6 +6603,17 @@ function openTaskDetail(taskId) {
   currentTaskId = taskId;
   taskReportCategory = getTodayJournalCategory(taskId, ctx.assignee);
   document.getElementById('td-title').textContent = ctx.f['任務名稱'] || '任務回報';
+  var tdNameEl = document.getElementById('td-name');
+  if (tdNameEl) tdNameEl.value = ctx.f['任務名稱'] || '';
+  var wiSel = document.getElementById('td-wi');
+  if (wiSel) {
+    fillTaskDetailWiSelect(wiSel);
+    var wiIds = getLinkIds(ctx.f['所屬工作項目']);
+    var wiId = wiIds[0] || '';
+    for (var wi = 0; wi < wiSel.options.length; wi++) {
+      if (wiSel.options[wi].value === wiId) { wiSel.selectedIndex = wi; break; }
+    }
+  }
   var projTag = document.getElementById('td-proj-tag');
   if (projTag) {
     projTag.textContent = ctx.projName || '';
@@ -6618,11 +6625,20 @@ function openTaskDetail(taskId) {
   var dueLabel = ctx.dueTs ? fmtDate(ctx.dueTs) : '—';
   var dateRange = startLabel ? (startLabel + ' – ' + dueLabel) : dueLabel;
   document.getElementById('td-meta').innerHTML =
-    '<span style="font-size:11px;background:var(--sf2);padding:2px 8px;border-radius:20px">' + ctx.wiName + '</span>'
-    + '<span class="av ' + avatarClass(ctx.assignee) + '">' + personInitial(ctx.assignee) + '</span>'
-    + '<span style="font-size:12px;color:var(--t2)">' + ctx.assignee + ' · ' + dateRange + '</span>'
+    '<span style="font-size:11px;background:var(--sf2);padding:2px 8px;border-radius:20px">' + escHtml(ctx.wiName) + '</span>'
+    + '<span style="font-size:12px;color:var(--t2)">' + escHtml(dateRange) + '</span>'
     + remain
     + '<span style="font-size:11px;color:var(--t3)">' + ctx.progress + '%</span>';
+  var assigneeSel = document.getElementById('td-assignee');
+  if (assigneeSel) {
+    fillSelectOptions(assigneeSel, getMemberNames());
+    for (var ai = 0; ai < assigneeSel.options.length; ai++) {
+      if (assigneeSel.options[ai].text === ctx.assignee || assigneeSel.options[ai].value === ctx.assignee) {
+        assigneeSel.selectedIndex = ai;
+        break;
+      }
+    }
+  }
   var tdStartEl = document.getElementById('td-start');
   var tdDueEl = document.getElementById('td-due');
   if (tdStartEl) tdStartEl.value = ctx.startTs ? tsToDateInput(ctx.startTs) : '';
@@ -8417,7 +8433,6 @@ function apiDelete(table, recordId) {
 
 
 // ── 修改功能 ──
-var editingTaskId = null;
 var editingWiId = null;
 var editingProjId = null;
 var editingExpenseId = null;
@@ -8829,71 +8844,15 @@ function saveEditExpense() {
   });
 }
 
-function openEditTask(taskId) {
-  var rec = tasksData.find(function(r){ return r.record_id === taskId; });
-  if (!rec) return;
-  editingTaskId = taskId;
-  var f = rec.fields;
-  refreshEditSelects();
-  document.getElementById('et-name').value = f['任務名稱'] || '';
-  var assigneeSel = document.getElementById('et-assignee');
-  var assigneeName = personName(f['負責人']);
-  for (var i = 0; i < assigneeSel.options.length; i++) {
-    if (assigneeSel.options[i].text === assigneeName) { assigneeSel.selectedIndex = i; break; }
-  }
-  var wiSel = document.getElementById('et-wi');
-  var wiIds = getLinkIds(f['所屬工作項目']);
-  var wiId = wiIds[0] || '';
-  for (var j = 0; j < wiSel.options.length; j++) {
-    if (wiSel.options[j].value === wiId) { wiSel.selectedIndex = j; break; }
-  }
-  document.getElementById('et-start').value = f['開始日期'] ? tsToDateInput(f['開始日期']) : '';
-  document.getElementById('et-due').value = f['預計完成日'] ? tsToDateInput(f['預計完成日']) : '';
-  var statusSel = document.getElementById('et-status');
-  for (var k = 0; k < statusSel.options.length; k++) {
-    if (statusSel.options[k].value === (f['進度狀態'] || '')) { statusSel.selectedIndex = k; break; }
-  }
-  op('pp-edit-task');
-}
-
-function saveEditTask() {
-  if (!editingTaskId) return;
-  var rec = tasksData.find(function(r){ return r.record_id === editingTaskId; });
-  var oldFields = rec ? {
-    '任務名稱': rec.fields['任務名稱'] || '',
-    '負責人': rec.fields['負責人'],
-    '所屬工作項目': rec.fields['所屬工作項目'],
-    '開始日期': rec.fields['開始日期'],
-    '預計完成日': rec.fields['預計完成日'],
-    '進度狀態': rec.fields['進度狀態'] || '',
-    '進度數值': rec.fields['進度數值'] || 0
-  } : null;
-  var status = document.getElementById('et-status').value;
-  var startVal = document.getElementById('et-start').value;
-  var dueVal = document.getElementById('et-due').value;
-  var fields = {
-    '任務名稱': document.getElementById('et-name').value.trim(),
-    '負責人': document.getElementById('et-assignee').value,
-    '所屬工作項目': [document.getElementById('et-wi').value],
-    '進度狀態': status,
-    '進度數值': parseProgressVal(status, null)
-  };
-  if (startVal) fields['開始日期'] = dateInputToTs(startVal);
-  if (dueVal) fields['預計完成日'] = dateInputToTs(dueVal);
-  if (!fields['任務名稱']) { alert('請填寫任務名稱'); return; }
-  showConfirm({
-    type: 'edit',
-    title: '確認修改任務',
-    body: '確定要儲存這筆修改嗎？<br><span class="confirm-name">「' + fields['任務名稱'] + '」</span>',
-    okText: '儲存',
-    onOk: function() {
-      if (oldFields) undoStack.push({ type: 'update', table: 'tasks', recordId: editingTaskId, data: oldFields });
-      apiPut('tasks', editingTaskId, fields).then(function() {
-        cl('pp-edit-task');
-        syncTables(['tasks']);
-      }).catch(function(err) { alert('修改失敗：' + err.message); });
-    }
-  });
+function fillTaskDetailWiSelect(sel) {
+  if (!sel) return;
+  fillSelectOptions(sel,
+    workitemsData.map(function(w) {
+      var proj = getProjectNameFromWi(w);
+      return (proj ? proj + ' · ' : '') + (w.fields['工作項目名稱'] || '');
+    }),
+    workitemsData.map(function(w) { return w.record_id; })
+  );
 }
 
 function onNwProjChange() {
@@ -9046,22 +9005,12 @@ function saveEditProject() {
 
 function refreshEditSelects() {
   var names = getMemberNames();
-  ['et-assignee', 'ew-assignee', 'ew-exec-partner', 'ep-pm'].forEach(function(id) {
+  ['ew-assignee', 'ew-exec-partner', 'ep-pm'].forEach(function(id) {
     var sel = document.getElementById(id);
     if (sel) fillSelectOptions(sel, names);
   });
-  var etWi = document.getElementById('et-wi');
-  if (etWi) {
-    fillSelectOptions(etWi,
-      workitemsData.map(function(w){
-        var proj = getProjectNameFromWi(w);
-        return (proj ? proj + ' · ' : '') + (w.fields['工作項目名稱'] || '');
-      }),
-      workitemsData.map(function(w){ return w.record_id; })
-    );
-  }
-  var etStatus = document.getElementById('et-status');
-  if (etStatus) fillSelectOptions(etStatus, PROGRESS_OPTIONS);
+  var tdWi = document.getElementById('td-wi');
+  if (tdWi) fillTaskDetailWiSelect(tdWi);
 }
 
 function deleteProject(id, name) {
@@ -9233,7 +9182,7 @@ function onEditExpenseProjChange() {
 
 function refreshFormSelects() {
   // also refresh edit selects if they exist
-  if (document.getElementById('et-assignee')) refreshEditSelects();
+  if (document.getElementById('td-wi')) refreshEditSelects();
   var names = getMemberNames();
   document.querySelectorAll('select[data-members]').forEach(function(sel) {
     fillSelectOptions(sel, names);
