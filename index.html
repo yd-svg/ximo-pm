@@ -2613,11 +2613,9 @@ function saveProjectImport() {
     cl('pp-proj');
     resetProcForm();
     syncTables(['projects', 'workitems']);
-    var msg = '標案與工作項目已新增！';
     if (res.partialErrors && res.partialErrors.length) {
-      msg += '\n\n後台同步警告：\n' + res.partialErrors.join('\n');
+      alert('後台同步警告：\n' + res.partialErrors.join('\n'));
     }
-    alert(msg);
   }).catch(function(err) {
     alert('新增失敗：' + err.message);
   }).finally(function() {
@@ -3111,7 +3109,7 @@ var PROJECT_COLORS = [
 ];
 
 // ── 從 API 讀取資料 ──
-var APP_BUILD = '20260615v79';
+var APP_BUILD = '20260615v80';
 var DATA_CACHE_KEY = 'ximo-bootstrap-cache-v1';
 var BOOTSTRAP_TABLE_KEYS = ['projects', 'workitems', 'tasks', 'expenses', 'designs', 'journal', 'members'];
 var SYNC_EXPAND = {
@@ -3156,8 +3154,10 @@ function setBootStatus(msg, isErr) {
 function setSyncStatus(on) {
   syncStatusCount += on ? 1 : -1;
   if (syncStatusCount < 0) syncStatusCount = 0;
-  if (syncStatusCount > 0) setBootStatus('同步資料中…', false);
-  else setBootStatus('');
+}
+
+function showSyncError(msg) {
+  setBootStatus(msg || '資料同步失敗，請稍後再試', true);
 }
 
 function expandSyncKeys(input) {
@@ -3252,6 +3252,7 @@ function runSyncTables(tableKeys) {
     refreshViewsForTables(keys);
   }).catch(function(err) {
     console.warn('增量同步失敗，改為完整重載', err);
+    showSyncError('資料同步失敗：' + (err.message || '請稍後再試'));
     return loadData({ silent: true, skipCache: true });
   }).finally(function() {
     setSyncStatus(false);
@@ -6220,7 +6221,6 @@ function confirmDesignReport() {
       renderGanttFromData();
     }
     cl('pp-dd');
-    alert('設計回報已儲存！');
   }).catch(function(err) {
     console.error(err);
     alert('儲存失敗：' + (err.message || '請稍後再試'));
@@ -6560,7 +6560,6 @@ function confirmTaskReport() {
       renderGanttFromData();
     }
     cl('pp-td');
-    alert('已同步至 Lark');
   }).catch(function(err) {
     console.error(err);
     alert('儲存失敗：' + (err.message || '請確認 Lark 欄位設定'));
@@ -7487,7 +7486,6 @@ function saveDailyJournal() {
       renderDesigns();
       renderGanttFromData();
     }
-    alert(existing ? '已更新今日日報！' : '已儲存今日日報！');
   }).catch(function(err) {
     console.error(err);
     alert('儲存失敗：' + (err.message || '請確認 Lark 日報表欄位名稱與類型是否正確'));
@@ -7754,7 +7752,6 @@ function resolveBlockedTask(taskId, journalRecId, newCat, btn) {
         renderGanttFromData();
       }
       renderJournalPage();
-      alert('已更新，此項目不會再出現在卡關列表');
     })
     .catch(function(err) {
       alert('更新失敗：' + (err.message || '請稍後再試'));
@@ -8543,7 +8540,6 @@ function onGanttProjStatusChange(projId, sel) {
     if (rec) rec.fields['狀態'] = status;
     sel.dataset.prev = status;
     syncTables(['projects']);
-    showUndoToast('標案狀態已更新為「' + status + '」');
   }).catch(function(err) { alert('狀態更新失敗：' + err.message); sel.value = prev; });
 }
 
@@ -8621,14 +8617,11 @@ function confirmArchiveProject() {
         cancelArchiveProject();
         if (oldFields && res.statusUpdated) undoStack.push({ type: 'update', table: 'projects', recordId: savedProjId, data: oldFields });
         syncTables(['projects']);
-        showUndoToast(res.statusUpdated ? '標案已封存至知識庫' : '資料已寫入知識庫');
-        var openUrl = res.wikiUrl || url;
-        var confirmMsg = res.statusUpdated
-          ? '封存完成。\n\n是否開啟知識庫資料頁面？'
-          : '資料已成功寫入知識庫。\n\nPM 後台狀態未能自動更新，請至標案表手動改為「封存」。\n\n是否開啟知識庫資料頁面？';
-        if (confirm(confirmMsg)) {
-          window.open(openUrl, '_blank', 'noopener');
+        if (!res.statusUpdated) {
+          alert('資料已寫入知識庫，但標案狀態未能自動更新為「封存」，請至標案表手動修改。');
         }
+        var openUrl = res.wikiUrl || url;
+        if (openUrl) window.open(openUrl, '_blank', 'noopener');
       }).catch(function(err) {
         alert('封存失敗：' + err.message);
       }).finally(function() {
@@ -8752,7 +8745,6 @@ function saveEditDesign() {
       apiPut('designs', editingDesignId, fields).then(function() {
         cl('pp-edit-des');
         syncTables(['designs']);
-        showUndoToast('設計任務單已修改');
       }).catch(function(err) { alert('修改失敗：' + err.message); });
     }
   });
@@ -8830,7 +8822,6 @@ function saveEditExpense() {
       apiPut('expenses', editingExpenseId, fields).then(function() {
         cl('pp-edit-exp');
         syncTables(['expenses']);
-        showUndoToast('支出明細已修改');
       }).catch(function(err) { alert('修改失敗：' + err.message); });
     }
   });
@@ -8898,7 +8889,6 @@ function saveEditTask() {
       apiPut('tasks', editingTaskId, fields).then(function() {
         cl('pp-edit-task');
         syncTables(['tasks']);
-        showUndoToast('任務已修改');
       }).catch(function(err) { alert('修改失敗：' + err.message); });
     }
   });
@@ -8985,7 +8975,6 @@ function saveEditWorkItem() {
       apiPut('workitems', editingWiId, fields).then(function() {
         cl('pp-edit-wi');
         syncTables(['workitems']);
-        showUndoToast('工作項目已修改');
       }).catch(function(err) { alert('修改失敗：' + err.message); });
     }
   });
@@ -9048,7 +9037,6 @@ function saveEditProject() {
       apiPut('projects', editingProjId, fields).then(function() {
         cl('pp-edit-proj');
         syncTables(['projects']);
-        showUndoToast('標案已修改');
       }).catch(function(err) { alert('修改失敗：' + err.message); });
     }
   });
@@ -9086,7 +9074,6 @@ function deleteProject(id, name) {
       apiDelete('projects', id).then(function() {
         if (savedData) undoStack.push({ type: 'delete', table: 'projects', data: savedData });
         syncTables(['all']);
-        showUndoToast('標案「' + name + '」已刪除（5 秒內可復原）');
       }).catch(function(err) { alert('刪除失敗：' + err.message); });
     }
   });
@@ -9104,7 +9091,6 @@ function deleteWorkItem(id, name) {
       apiDelete('workitems', id).then(function() {
         if (savedData) undoStack.push({ type: 'delete', table: 'workitems', data: savedData });
         syncTables(['workitems', 'tasks']);
-        showUndoToast('工作項目「' + name + '」已刪除（5 秒內可復原）');
       }).catch(function(err) { alert('刪除失敗：' + err.message); });
     }
   });
@@ -9122,7 +9108,6 @@ function deleteTask(id, name) {
       apiDelete('tasks', id).then(function() {
         if (savedData) undoStack.push({ type: 'delete', table: 'tasks', data: savedData });
         syncTables(['tasks']);
-        showUndoToast('任務「' + name + '」已刪除（5 秒內可復原）');
       }).catch(function(err) { alert('刪除失敗：' + err.message); });
     }
   });
@@ -9142,7 +9127,6 @@ function deleteExpense(id, name) {
         cl('pp-edit-exp');
         editingExpenseId = null;
         syncTables(['expenses']);
-        showUndoToast('支出「' + name + '」已刪除（5 秒內可復原）');
       }).catch(function(err) { alert('刪除失敗：' + err.message); });
     }
   });
@@ -9169,7 +9153,6 @@ function deleteDesign(id, name) {
         cl('pp-edit-des');
         editingDesignId = null;
         syncTables(['designs']);
-        showUndoToast('設計任務「' + name + '」已刪除（5 秒內可復原）');
       }).catch(function(err) { alert('刪除失敗：' + err.message); });
     }
   });
@@ -9345,11 +9328,9 @@ function saveWorkItems() {
     cl('pp-work');
     document.getElementById('sl').innerHTML = '';
     syncTables(['workitems']);
-    var msg = '工作項目已新增！';
     if (res.partialErrors && res.partialErrors.length) {
-      msg += '\n\n後台同步警告：\n' + res.partialErrors.join('\n');
+      alert('後台同步警告：\n' + res.partialErrors.join('\n'));
     }
-    alert(msg);
   }).catch(function(err) {
     alert('新增失敗：' + err.message);
   }).finally(function() {
@@ -9388,7 +9369,6 @@ function saveTask() {
     cl('pp-task');
     document.getElementById('nt-name').value = '';
     syncTables(['tasks']);
-    alert('任務已新增！');
   }).catch(function(err) {
     alert('新增失敗：' + err.message);
   });
@@ -9423,7 +9403,6 @@ function saveExpense() {
     document.getElementById('aa').value = '';
     document.getElementById('ua').value = '';
     syncTables(['expenses']);
-    alert('支出明細已新增！');
   }).catch(function(err) {
     alert('新增失敗：' + err.message);
   });
@@ -9464,7 +9443,6 @@ function saveDesign() {
     cl('pp-des');
     document.getElementById('ds-name').value = '';
     syncTables(['designs']);
-    alert('設計任務單已新增！');
   }).catch(function(err) {
     alert('新增失敗：' + err.message);
   });
